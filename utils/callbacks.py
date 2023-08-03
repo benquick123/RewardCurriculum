@@ -286,6 +286,7 @@ class SchedulerCallback(BaseCallback):
     def _on_rollout_end(self) -> None:
         self.was_agent_updated = True
         self.model._last_obs = self.model.env.reset()
+        # print("ROLLOUT END")
         
     def _safely_reset_buffers(self, idx_list):
         for idx in idx_list:

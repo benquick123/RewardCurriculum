@@ -154,7 +154,6 @@ class SAC(stable_baselines3.SAC):
         return RolloutReturn(num_collected_steps * env.num_envs, num_collected_episodes, continue_training)
     
     def train(self, gradient_steps: int, batch_size: int = 64) -> None:
-        print("WE TRAIN?")
         # Switch to train mode (this affects batch norm / dropout)
         self.policy.set_training_mode(True)
         # Update optimizers learning rate

@@ -28,7 +28,6 @@ if __name__ == "__main__":
     save_self(args.config_path, config)
     
     make_env_fn = lambda wrappers, wrapper_kwargs : get_env(config["environment"]["env_name"], wrappers=wrappers, wrapper_kwargs=wrapper_kwargs)
-    
     env = make_vec_env(make_env_fn, 
                        n_envs=config["environment"]["n_envs"], 
                        env_kwargs={"wrappers": config["environment"]["wrappers"], "wrapper_kwargs": config["environment"]["wrapper_kwargs"]},
@@ -37,7 +36,11 @@ if __name__ == "__main__":
     
     callback = SchedulerCallback(config)
     if config["log"]:
-        wrappers = ["SparseRewardWrapper", "gym.wrappers.FlattenObservation"]
+        wrappers = []
+        if "SparseRewardWrapper" in config["environment"]["wrappers"]:
+            wrappers += ["SparseRewardWrapper"]
+        wrappers += ["gym.wrappers.FlattenObservation"]
+        
         wrapper_kwargs = []
         for i in range(len(wrappers)):
             if wrappers[i] in config["environment"]["wrappers"]:

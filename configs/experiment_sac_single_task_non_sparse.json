@@ -1,10 +1,12 @@
 {
     "template": "configs/templates/experiment_sac.json",
-    "log_path": "results/robustness",
+    "log_path": "results/baselines",
+    "log": "regular_baseline",
     "learner_kwargs": {
         "scheduler_class": "cl_algorithms.single_task.SingleTask"
     },
     "environment": {
-        "wrappers": ["__envwrapper__", "gym.wrappers.FlattenObservation"]
+        "wrappers": ["__envwrapper__", "gym.wrappers.FlattenObservation"],
+        "wrapper_kwargs": [{}, {}]
     }
 }

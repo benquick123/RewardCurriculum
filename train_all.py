@@ -92,7 +92,6 @@ if __name__ == "__main__":
                     p.join()
                 processes = []
             
-            # os.system(command_to_run)
             sleep(1)
             
     for p in processes:

@@ -75,7 +75,7 @@ def get_config(path, args, remaining_args):
         if "log_path" not in config:
             config["log_path"] = "."
         
-        experiment_id = config["learner_class"].split(".")[-1].lower() + "_" + config["learner_kwargs"]["scheduler_class"].split(".")[-1].lower() + "_" + str(config["seed"])
+        experiment_id = args.env_name.split("/")[-1] + "_" + config["learner_class"].split(".")[-1].lower() + "_" + config["learner_kwargs"]["scheduler_class"].split(".")[-1].lower() + "_" + str(config["seed"])
         config["log"] += "_" + experiment_id
         os.makedirs(os.path.join(config["log_path"], config["log"]))
         
