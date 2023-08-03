@@ -1,0 +1,16 @@
+{
+    "template": "configs/templates/experiment_sac.json",
+    "log_path": "./results",
+    "learner_kwargs": {
+        "scheduler_class": "cl_algorithms.alpgmm.ALPGMM",
+        "scheduler_kwargs": {
+            "update_frequency": 10,
+            "history_len": 50,
+            "nb_bootstrap": 5,
+            "random_task_ratio": 0.2,
+            "potential_clusters": [2, 11, 1],
+            "gmm_fitness_fn": "aic", 
+            "gmm_kwargs": {}
+        }
+    }
+}

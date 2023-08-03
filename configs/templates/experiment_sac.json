@@ -1,0 +1,25 @@
+{
+    "template": ["configs/templates/experiment.json", "configs/templates/experiment_env.json"],
+    "learner_class": "rl_algorithms.sac.SAC",
+    "log_path": "./results/",
+    "log": true,
+    "log_model_interval": false,
+    "learner_kwargs": {
+        "gradient_steps": 1000,
+        "buffer_size": 2000000,
+        "batch_size": 256,
+        "train_freq": [10, "episode"],
+        "learning_starts": 10000,
+        "learning_rate": 0.0003,
+        "gamma": 0.99,
+        "tau": 0.005,
+        "device": "cuda",
+        "policy_kwargs": {
+            "net_arch": {"qf": [256, 256], "pi": [256, 256]},
+            "n_critics": 10
+        },
+        "scheduler_kwargs": {
+            "tau": 10
+        }
+    }
+}

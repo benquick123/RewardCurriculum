@@ -1,0 +1,10 @@
+{
+    "template": "configs/templates/experiment_sac.json",
+    "log_path": "results/robustness",
+    "learner_kwargs": {
+        "scheduler_class": "cl_algorithms.single_task.SingleTask"
+    },
+    "environment": {
+        "wrappers": ["__envwrapper__", "gym.wrappers.FlattenObservation"]
+    }
+}
