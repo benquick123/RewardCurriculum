@@ -13,7 +13,7 @@ if __name__ == "__main__":
     
     start_seed = 0
     n_seeds = 5
-    max_processes = 5
+    max_processes = 4
     
     experiment_configs = [
         "--config_path configs/experiment_sac_single_task.json --env_name LunarLanderContinuous-v2 --environment.wrapper_kwargs.0.reward_threshold 99",
@@ -85,7 +85,7 @@ if __name__ == "__main__":
             p = mp.Process(target=run_command, args=[command_to_run])
             p.start()
             processes.append(p)
-            sleep(10)
+            sleep(1)
             
             if len(processes) == max_processes:
                 for p in processes:
