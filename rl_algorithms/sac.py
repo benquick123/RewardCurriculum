@@ -255,9 +255,11 @@ class SAC(stable_baselines3.SAC):
             # Alternative: actor_loss = th.mean(log_prob - qf1_pi)
             # Min over all critic networks
             q_values_pi = th.cat(self.critic(observations, actions_pi), dim=1)
-            # min_qf_pi, _ = th.min(q_values_pi, dim=1, keepdim=True)
-            mean_qf_pi = th.mean(q_values_pi, dim=1, keepdim=True)
-            actor_loss = (ent_coef * log_prob - mean_qf_pi).mean()
+            if self.policy.critic.n_critics == 2:
+                qf_pi, _ = th.min(q_values_pi, dim=1, keepdim=True)
+            else:
+                qf_pi = th.mean(q_values_pi, dim=1, keepdim=True)
+            actor_loss = (ent_coef * log_prob - qf_pi).mean()
             actor_losses.append(actor_loss.item())
 
             # Optimize the actor
