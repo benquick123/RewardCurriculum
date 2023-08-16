@@ -14,7 +14,7 @@
         "gamma": 0.99,
         "tau": 0.005,
         "ent_coef": "auto_0.1",
-        "target_update_frequency": 2,
+        "target_update_interval": 2,
         "device": "cuda",
         "policy_kwargs": {
             "net_arch": {"qf": [1024, 1024], "pi": [1024, 1024]},
