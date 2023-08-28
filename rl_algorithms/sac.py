@@ -80,6 +80,9 @@ class SAC(stable_baselines3.SAC):
             self.actor.reset_noise(env.num_envs)
 
         callback.on_rollout_start()
+        
+        print("2. ROLLOUT:", self.scheduler.get_current_weights())
+        
         continue_training = True
         while should_collect_more_steps(train_freq, num_collected_steps, num_collected_episodes):
             if self.use_sde and self.sde_sample_freq > 0 and num_collected_steps % self.sde_sample_freq == 0:
@@ -168,10 +171,13 @@ class SAC(stable_baselines3.SAC):
         actor_losses, critic_losses = [], []
         
         current_reward_weights = self.scheduler.get_current_weights()
+        print("1. TRAIN:", current_reward_weights)
         current_reward_weights = current_reward_weights.reshape((1, -1))
-        current_reward_weights = np.repeat(current_reward_weights, int(batch_size / self.scheduler.reward_dim), axis=0)
+        # make a proportion of the weights correspond to current reward weights.
+        current_reward_weights = np.repeat(current_reward_weights, 2 * int(batch_size / self.scheduler.reward_dim), axis=0)
         current_reward_weights = th.tensor(current_reward_weights, dtype=th.float32).to(self.device)
         
+        # make a proportion of the weights correspond to the main reward.
         main_task_reward_weights = th.zeros((int(batch_size / self.scheduler.reward_dim), self.scheduler.reward_dim), dtype=th.float32).to(self.device)
         main_task_reward_weights[:, -1] = 1.0
         
@@ -180,13 +186,7 @@ class SAC(stable_baselines3.SAC):
         for gradient_step in range(gradient_steps):
             # Sample replay buffer
             replay_data = self.replay_buffer.sample(batch_size, env=self._vec_normalize_env)  # type: ignore[union-attr]
-            
-            # observations = th.cat((replay_data.observations.repeat(2, 1), current_reward_weights), dim=1)
-            # next_observations = th.cat((replay_data.next_observations.repeat(2, 1), current_reward_weights), dim=1)
-            # rewards = replay_data.rewards.repeat(2, 1).reshape(batch_size * 2, 1, -1) @ current_reward_weights.reshape(batch_size * 2, 1, -1).mT
-            # rewards = rewards.reshape(batch_size * 2, 1)
-            
-            # reward_weights = current_reward_weights
+
             reward_weights = th.tensor(self.scheduler.sample_batch(remaining_batch_size), dtype=th.float32).to(self.device)
             reward_weights = th.concatenate((reward_weights, current_reward_weights, main_task_reward_weights), dim=0)
             

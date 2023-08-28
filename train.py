@@ -27,7 +27,7 @@ if __name__ == "__main__":
     config = get_config(args.config_path, args, remaining_args)
     save_self(args.config_path, config)
     
-    make_env_fn = lambda wrappers, wrapper_kwargs : get_env(config["environment"]["env_name"], wrappers=wrappers, wrapper_kwargs=wrapper_kwargs)
+    make_env_fn = lambda wrappers, wrapper_kwargs, ignore_keyword="ignore" : get_env(config["environment"]["env_name"], wrappers=wrappers, wrapper_kwargs=wrapper_kwargs, ignore_keyword=ignore_keyword)
     env = make_vec_env(make_env_fn, 
                        n_envs=config["environment"]["n_envs"], 
                        env_kwargs={"wrappers": config["environment"]["wrappers"], "wrapper_kwargs": config["environment"]["wrapper_kwargs"]},
@@ -36,6 +36,8 @@ if __name__ == "__main__":
     
     callback = SchedulerCallback(config)
     if config["log"]:
+        from utils.callbacks import EvalCallback
+        
         wrappers = []
         if "SparseRewardWrapper" in config["environment"]["wrappers"]:
             wrappers += ["SparseRewardWrapper"]
@@ -49,7 +51,7 @@ if __name__ == "__main__":
                 wrapper_kwargs.append({})
         
         from utils.callbacks import EvalCallback
-        eval_env = make_vec_env(make_env_fn, n_envs=1, env_kwargs={"wrappers": wrappers, "wrapper_kwargs": wrapper_kwargs}, seed=config["seed"], vec_env_cls=SubprocVecEnv)
+        eval_env = make_vec_env(make_env_fn, n_envs=1, env_kwargs={"wrappers": wrappers, "wrapper_kwargs": wrapper_kwargs, "ignore_keyword": None}, seed=config["seed"], vec_env_cls=SubprocVecEnv)
         callback = [EvalCallback(eval_env=eval_env, warn=False, **config["eval_kwargs"]), callback]
     
     learner = config["learner_class"]("MlpPolicy", env, **config["learner_kwargs"])

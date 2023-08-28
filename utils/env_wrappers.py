@@ -12,7 +12,7 @@ from gymnasium.core import ActType, ObsType
 
 class SparseRewardWrapper(gym.RewardWrapper):
     
-    def __init__(self, env, reward_threshold):
+    def __init__(self, env, reward_threshold, **kwargs):
         super(SparseRewardWrapper, self).__init__(env)
         self.reward_threshold = reward_threshold
         
@@ -23,8 +23,29 @@ class SparseRewardWrapper(gym.RewardWrapper):
     
     def reward(self, reward):
         assert isinstance(reward, float) or isinstance(reward, int), f"A dense reward must be a number before converting it to sparse. Got {reward}"
-        reward = reward > self.reward_threshold
+        reward = reward >= self.reward_threshold
         return float(reward)
+    
+
+class DelayedRewardWrapper(gym.RewardWrapper):
+    
+    def reset(self, *, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[Any, dict[str, Any]]:
+        self.episode_reward = 0
+        return super().reset(seed=seed, options=options)
+    
+    def step(self, action: Any) -> tuple[Any, SupportsFloat, bool, bool, dict[str, Any]]:
+        observation, reward, terminated, truncated, info = self.env.step(action)
+        info["original_reward"] = reward
+        self.episode_reward += reward
+        
+        if terminated:
+            reward = self.episode_reward
+        else:
+            reward = 0
+        return observation, self.reward(reward), terminated, truncated, info
+    
+    def reward(self, reward: SupportsFloat) -> SupportsFloat:
+        return reward
     
 
 class AuxRewardWrapper(gym.RewardWrapper):
@@ -37,6 +58,8 @@ class AuxRewardWrapper(gym.RewardWrapper):
         return np.array([reward], dtype=float)
         
     
+# dm_control environment wrappers
+
 class AcrobotAuxRewardWrapper(AuxRewardWrapper):
     
     def reward(self, reward, observation, action):
@@ -330,8 +353,10 @@ class WalkerAuxRewardWrapper(AuxRewardWrapper):
             reward
         ], dtype=float)
     
-    
-class LunarlandercontinuousAuxRewardWrapper(AuxRewardWrapper):
+
+# gym environment wrappers
+ 
+class GymLunarlandercontinuousAuxRewardWrapper(AuxRewardWrapper):
     
     def reward(self, reward, observation, action):
         stop_horizontal = (-0.1 < observation[2]) & (observation[2] < 0.1)
@@ -352,7 +377,38 @@ class LunarlandercontinuousAuxRewardWrapper(AuxRewardWrapper):
             reward
         ], dtype=float)
 
+
+class GymHalfcheetahAuxRewardWrapper(AuxRewardWrapper):
     
+    def reward(self, reward, observation, action):
+        return super().reward(reward, observation, action)
+
+
+class GymHumanoidAuxRewardWrapper(AuxRewardWrapper):
+    
+    def reward(self, reward, observation, action):
+        return super().reward(reward, observation, action)
+
+
+class GymWalker2dAuxRewardWrapper(AuxRewardWrapper):
+    
+    def reward(self, reward, observation, action):
+        return super().reward(reward, observation, action)
+
+
+class GymSwimmerAuxRewardWrapper(AuxRewardWrapper):
+    
+    def reward(self, reward, observation, action):
+        return super().reward(reward, observation, action)
+
+
+class GymHopperAuxRewardWrapper(AuxRewardWrapper):
+    
+    def reward(self, reward, observation, action):
+        return super().reward(reward, observation, action)
+
+
+# other utils
 class Monitor(stable_baselines3.common.monitor.Monitor):
 
     def step(self, action: ActType) -> Tuple[ObsType, SupportsFloat, bool, bool, Dict[str, Any]]:
@@ -448,7 +504,7 @@ def make_vec_env(
     return vec_env
 
     
-def get_env(env_name, wrappers=["SparseRewardWrapper", "__envwrapper__", "gym.wrappers.FlattenObservation"], wrapper_kwargs=[{}, {}, {}]):
+def get_env(env_name, wrappers=["SparseRewardWrapper", "__envwrapper__", "gym.wrappers.FlattenObservation"], wrapper_kwargs=[{}, {}, {}], ignore_keyword=None):
     # works with classes in this file and with classes that are imported at the beginning.
     env = gym.make(env_name)
     
@@ -459,6 +515,9 @@ def get_env(env_name, wrappers=["SparseRewardWrapper", "__envwrapper__", "gym.wr
         import utils.env_wrappers as reward_wrapper
         for lib in wrapper_name.split("."):
             reward_wrapper = reward_wrapper.__dict__[lib]
+            
+        if ignore_keyword is not None and wrapper_kwargs[i].get(ignore_keyword, False):
+            continue
         
         if len(wrapper_kwargs[i]) > 0:
             env = reward_wrapper(env, **wrapper_kwargs[i])

@@ -6,7 +6,6 @@
         "scheduler_class": "cl_algorithms.single_task.SingleTask"
     },
     "environment": {
-        "wrappers": ["__envwrapper__", "gym.wrappers.FlattenObservation"],
-        "wrapper_kwargs": [{}, {}]
+        "wrapper_kwargs": [{"ignore": true, "reward_threshold": 0.95}, {}, {}]
     }
 }
