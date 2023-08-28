@@ -105,7 +105,7 @@ class ALPGMM(Scheduler):
             self.current_weights = self.rng.multivariate_normal(self.gmm.means_[idx], self.gmm.covariances_[idx])[:-1]
             self.current_weights = np.clip(self.current_weights, 0.0, 1.0)
             
-        print("----------------- WEIGHTS CHANGED --------------------")
+        # print("----------------- WEIGHTS CHANGED --------------------")
         
         
     def sample_batch(self, batch_size, from_history_only=True):

@@ -76,16 +76,23 @@ if __name__ == "__main__":
         # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/walker-run-v0",
         
         # closest gym only environments in dm_control suite.
-        "--config_path configs/experiment_sac_single_task.json --env_name dm_control/swimmer-swimmer6-v0",
-        "--config_path configs/experiment_sac_single_task.json --env_name dm_control/walker-walk-v0",
-        "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/hopper-hop-v0",
-        "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/humanoid-walk-v0",
-        "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/walker-walk-v0",
-        "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/cheetah-run-v0",
-        "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/swimmer-swimmer6-v0",
-        "--config_path configs/experiment_sac_single_task.json --env_name dm_control/hopper-hop-v0",
-        "--config_path configs/experiment_sac_single_task.json --env_name dm_control/humanoid-walk-v0",
-        "--config_path configs/experiment_sac_single_task.json --env_name dm_control/cheetah-run-v0",
+        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/swimmer-swimmer6-v0",
+        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/walker-walk-v0",
+        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/hopper-hop-v0",
+        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/humanoid-walk-v0",
+        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/walker-walk-v0",
+        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/cheetah-run-v0",
+        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/swimmer-swimmer6-v0",
+        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/hopper-hop-v0",
+        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/humanoid-walk-v0",
+        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/cheetah-run-v0",
+        
+        # alpgmm
+        "--config_path configs/experiment_sac_alpgmm.json --env_name dm_control/cheetah-run-v0",
+        "--config_path configs/experiment_sac_alpgmm.json --env_name dm_control/hopper-hop-v0",
+        "--config_path configs/experiment_sac_alpgmm.json --env_name dm_control/humanoid-walk-v0",
+        "--config_path configs/experiment_sac_alpgmm.json --env_name dm_control/swimmer-swimmer6-v0",
+        "--config_path configs/experiment_sac_alpgmm.json --env_name dm_control/walker-walk-v0",
     ]
     
     command = "python train.py %s --seed %d"

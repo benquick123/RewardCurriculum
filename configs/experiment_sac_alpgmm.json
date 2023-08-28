@@ -1,6 +1,6 @@
 {
     "template": "configs/templates/experiment_sac.json",
-    "log_path": "./results",
+    "log_path": "./results/alpgmm",
     "learner_kwargs": {
         "scheduler_class": "cl_algorithms.alpgmm.ALPGMM",
         "scheduler_kwargs": {

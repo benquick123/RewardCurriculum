@@ -81,7 +81,7 @@ class SAC(stable_baselines3.SAC):
 
         callback.on_rollout_start()
         
-        print("2. ROLLOUT:", self.scheduler.get_current_weights())
+        # print("2. ROLLOUT:", self.scheduler.get_current_weights())
         
         continue_training = True
         while should_collect_more_steps(train_freq, num_collected_steps, num_collected_episodes):
@@ -171,7 +171,7 @@ class SAC(stable_baselines3.SAC):
         actor_losses, critic_losses = [], []
         
         current_reward_weights = self.scheduler.get_current_weights()
-        print("1. TRAIN:", current_reward_weights)
+        # print("1. TRAIN:", current_reward_weights)
         current_reward_weights = current_reward_weights.reshape((1, -1))
         # make a proportion of the weights correspond to current reward weights.
         current_reward_weights = np.repeat(current_reward_weights, 2 * int(batch_size / self.scheduler.reward_dim), axis=0)
