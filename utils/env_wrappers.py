@@ -12,9 +12,10 @@ from gymnasium.core import ActType, ObsType
 
 class SparseRewardWrapper(gym.RewardWrapper):
     
-    def __init__(self, env, reward_threshold, **kwargs):
+    def __init__(self, env, reward_threshold, threshold_relationship="larger", **kwargs):
         super(SparseRewardWrapper, self).__init__(env)
         self.reward_threshold = reward_threshold
+        self.threshold_relationship = threshold_relationship
         
     def step(self, action: Any) -> tuple[Any, SupportsFloat, bool, bool, dict[str, Any]]:
         observation, reward, terminated, truncated, info = self.env.step(action)
@@ -23,7 +24,11 @@ class SparseRewardWrapper(gym.RewardWrapper):
     
     def reward(self, reward):
         assert isinstance(reward, float) or isinstance(reward, int), f"A dense reward must be a number before converting it to sparse. Got {reward}"
-        reward = reward >= self.reward_threshold
+        assert self.threshold_relationship in {"larger", "smaller"}, 'self.threshold_relationship not in {"larger", "smaller"}'
+        if self.threshold_relationship == "larger":
+            reward = reward >= self.reward_threshold
+        else:
+            reward = reward <= self.reward_threshold
         return float(reward)
     
 
@@ -378,37 +383,8 @@ class GymLunarlandercontinuousAuxRewardWrapper(AuxRewardWrapper):
         ], dtype=float)
 
 
-class GymHalfcheetahAuxRewardWrapper(AuxRewardWrapper):
-    
-    def reward(self, reward, observation, action):
-        return super().reward(reward, observation, action)
-
-
-class GymHumanoidAuxRewardWrapper(AuxRewardWrapper):
-    
-    def reward(self, reward, observation, action):
-        return super().reward(reward, observation, action)
-
-
-class GymWalker2dAuxRewardWrapper(AuxRewardWrapper):
-    
-    def reward(self, reward, observation, action):
-        return super().reward(reward, observation, action)
-
-
-class GymSwimmerAuxRewardWrapper(AuxRewardWrapper):
-    
-    def reward(self, reward, observation, action):
-        return super().reward(reward, observation, action)
-
-
-class GymHopperAuxRewardWrapper(AuxRewardWrapper):
-    
-    def reward(self, reward, observation, action):
-        return super().reward(reward, observation, action)
-
-
 # other utils
+
 class Monitor(stable_baselines3.common.monitor.Monitor):
 
     def step(self, action: ActType) -> Tuple[ObsType, SupportsFloat, bool, bool, Dict[str, Any]]:
@@ -506,7 +482,10 @@ def make_vec_env(
     
 def get_env(env_name, wrappers=["SparseRewardWrapper", "__envwrapper__", "gym.wrappers.FlattenObservation"], wrapper_kwargs=[{}, {}, {}], ignore_keyword=None):
     # works with classes in this file and with classes that are imported at the beginning.
-    env = gym.make(env_name)
+    try:
+        env = gym.make(env_name, reward_type="dense")
+    except TypeError:
+        env = gym.make(env_name)
     
     for i, wrapper_name in enumerate(wrappers):
         if wrapper_name == "__envwrapper__":

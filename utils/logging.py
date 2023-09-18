@@ -5,7 +5,7 @@ import os
 from utils.configs import load_config
 
 
-def save_self(config_path, config):
+def save_self(config_path, args, config):
     if not config["log"]:
         return 
     
@@ -46,3 +46,6 @@ def save_self(config_path, config):
     # save the original config
     original_config = load_config(config_path)
     json.dump(original_config, open(os.path.join(path, "config_original.json"), "w"), indent=4)
+    
+    with open(os.path.join(path, "args.txt"), "w") as f:
+        f.write(str(args))

@@ -21,11 +21,13 @@ from utils.callbacks import SchedulerCallback
 from utils.configs import get_config
 from utils.logging import save_self
 from utils.env_wrappers import get_env, make_vec_env
+import panda_gym
+
 
 if __name__ == "__main__":
     args, remaining_args = parse_args()
     config = get_config(args.config_path, args, remaining_args)
-    save_self(args.config_path, config)
+    save_self(args.config_path, args, config)
     
     make_env_fn = lambda wrappers, wrapper_kwargs, ignore_keyword="ignore" : get_env(config["environment"]["env_name"], wrappers=wrappers, wrapper_kwargs=wrapper_kwargs, ignore_keyword=ignore_keyword)
     env = make_vec_env(make_env_fn, 

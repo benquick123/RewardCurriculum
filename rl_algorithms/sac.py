@@ -174,11 +174,11 @@ class SAC(stable_baselines3.SAC):
         # print("1. TRAIN:", current_reward_weights)
         current_reward_weights = current_reward_weights.reshape((1, -1))
         # make a proportion of the weights correspond to current reward weights.
-        current_reward_weights = np.repeat(current_reward_weights, 2 * int(batch_size / self.scheduler.reward_dim), axis=0)
+        current_reward_weights = np.repeat(current_reward_weights, int(0.2 * batch_size), axis=0)
         current_reward_weights = th.tensor(current_reward_weights, dtype=th.float32).to(self.device)
         
         # make a proportion of the weights correspond to the main reward.
-        main_task_reward_weights = th.zeros((int(batch_size / self.scheduler.reward_dim), self.scheduler.reward_dim), dtype=th.float32).to(self.device)
+        main_task_reward_weights = th.zeros((int(0.1 * batch_size), self.scheduler.reward_dim), dtype=th.float32).to(self.device)
         main_task_reward_weights[:, -1] = 1.0
         
         remaining_batch_size = batch_size - len(current_reward_weights) - len(main_task_reward_weights)

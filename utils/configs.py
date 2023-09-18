@@ -44,6 +44,27 @@ def load_config(path):
 def get_config(path, args, remaining_args):
     config = load_config(path)
     
+    # go through remaining args
+    for i in range(0, len(remaining_args), 2):
+        arg = remaining_args[i].replace("--", "").split(".")
+        value = remaining_args[i+1]
+        current = config
+        for _arg in arg[:-1]:
+            if _arg.isdigit():
+                _arg = int(_arg)
+                assert len(current) > _arg, "Provided index is out of range."
+            elif _arg not in current:
+                current[_arg] = dict()
+                
+            current = current[_arg]
+        
+        try:
+            value = float(value)
+        except ValueError:
+            pass
+        
+        current[arg[-1]] = value
+    
     # environment hyperparams
     config["environment"]["env_name"] = args.env_name
     config["environment"]["n_envs"] = min(config["learner_kwargs"]["train_freq"][0], config["environment"].get("n_envs", float("inf")))        
@@ -118,20 +139,5 @@ def get_config(path, args, remaining_args):
     # if "scheduler_kwargs" not in config["learner_kwargs"]:
     #     config["learner_kwargs"]["scheduler_kwargs"] = dict()
     # config["learner_kwargs"]["scheduler_kwargs"]["log_path"] = os.path.join(config["log_path"], config["log"], "reward_weights.csv")
-    
-    for i in range(0, len(remaining_args), 2):
-        arg = remaining_args[i].replace("--", "").split(".")
-        value = remaining_args[i+1]
-        current = config
-        for _arg in arg[:-1]:
-            if _arg.isdigit():
-                _arg = int(_arg)
-                
-            try:
-                current = current[_arg]
-            except (KeyError, IndexError):
-                print(f"Argument {arg} not found in config.")
-                break
-        current[arg[-1]] = type(current[arg[-1]])(value)
             
     return config

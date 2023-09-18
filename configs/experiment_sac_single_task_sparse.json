@@ -1,0 +1,11 @@
+{
+    "template": "configs/templates/experiment_sac.json",
+    "log": "sparse",
+    "learner_kwargs": {
+        "scheduler_class": "cl_algorithms.single_task.SingleTask",
+        "reward_dim": 1
+    },
+    "environment": {
+        "wrappers": ["SparseRewardWrapper", "AuxRewardWrapper", "gym.wrappers.FlattenObservation"]
+    }
+}
