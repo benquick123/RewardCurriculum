@@ -49,7 +49,7 @@ def get_config(path, args, remaining_args):
         arg = remaining_args[i].replace("--", "").split(".")
         value = remaining_args[i+1]
         current = config
-        for _arg in arg[:-1]:
+        for _arg in arg[:-1]:            
             if _arg.isdigit():
                 _arg = int(_arg)
                 assert len(current) > _arg, "Provided index is out of range."
@@ -58,11 +58,11 @@ def get_config(path, args, remaining_args):
                 
             current = current[_arg]
         
+        # take care of some basic type conversions
         try:
-            value = float(value)
-        except ValueError:
-            pass
-        
+            value = eval(value)
+        except:
+            print(f"Couldn't parse remaining arg `{remaining_args[i]}` ({value}). Will keep as str.")        
         current[arg[-1]] = value
     
     # environment hyperparams
@@ -98,7 +98,9 @@ def get_config(path, args, remaining_args):
         
         experiment_id = args.env_name.split("/")[-1] + "_" + config["learner_class"].split(".")[-1].lower() + "_" + config["learner_kwargs"]["scheduler_class"].split(".")[-1].lower() + "_" + str(config["seed"])
         config["log"] += "_" + experiment_id
-        os.makedirs(os.path.join(config["log_path"], config["log"]))
+        if len(remaining_args) > 0:
+            config["log"] += "_" + "_".join([arg_name[2:].split(".")[-1] + "=" + value for arg_name, value in zip(remaining_args[0::2], remaining_args[1::2])])
+        # os.makedirs(os.path.join(config["log_path"], config["log"]), exist_ok=exist_ok)
         
         config["tb_log_name"] = experiment_id
         config["learner_kwargs"]["tensorboard_log"] = os.path.join(config["log_path"], config["log"], "tb")

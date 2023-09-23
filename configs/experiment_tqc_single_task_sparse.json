@@ -1,5 +1,5 @@
 {
-    "template": "configs/templates/experiment_sac.json",
+    "template": "configs/templates/experiment_tqc.json",
     "log": "sparse",
     "learner_kwargs": {
         "scheduler_class": "cl_algorithms.single_task.SingleTask",

@@ -5,11 +5,12 @@ import os
 from utils.configs import load_config
 
 
-def save_self(config_path, args, config):
+def save_self(config_path, args, remaining_args, config):
     if not config["log"]:
         return 
     
     path = os.path.join(config["log_path"], config["log"])
+    os.makedirs(path)
     os.makedirs(os.path.join(path, "code"))
     ignore = set(open(".gitignore", "r").read().split("\n") + [".git", ".gitignore", "configs"])
     for root, dirs, files in os.walk("."):
@@ -49,3 +50,5 @@ def save_self(config_path, args, config):
     
     with open(os.path.join(path, "args.txt"), "w") as f:
         f.write(str(args))
+    with open(os.path.join(path, "remaining_args.txt"), "w") as f:
+        f.write(str(remaining_args))

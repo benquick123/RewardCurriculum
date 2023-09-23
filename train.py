@@ -27,7 +27,7 @@ import panda_gym
 if __name__ == "__main__":
     args, remaining_args = parse_args()
     config = get_config(args.config_path, args, remaining_args)
-    save_self(args.config_path, args, config)
+    save_self(args.config_path, args, remaining_args, config)
     
     make_env_fn = lambda wrappers, wrapper_kwargs, ignore_keyword="ignore" : get_env(config["environment"]["env_name"], wrappers=wrappers, wrapper_kwargs=wrapper_kwargs, ignore_keyword=ignore_keyword)
     env = make_vec_env(make_env_fn, 
@@ -43,7 +43,7 @@ if __name__ == "__main__":
         wrappers = []
         if "SparseRewardWrapper" in config["environment"]["wrappers"]:
             wrappers += ["SparseRewardWrapper"]
-        wrappers += ["gym.wrappers.FlattenObservation"]
+        # wrappers += ["gym.wrappers.FlattenObservation"]
         
         wrapper_kwargs = []
         for i in range(len(wrappers)):
@@ -56,7 +56,7 @@ if __name__ == "__main__":
         eval_env = make_vec_env(make_env_fn, n_envs=1, env_kwargs={"wrappers": wrappers, "wrapper_kwargs": wrapper_kwargs, "ignore_keyword": None}, seed=config["seed"], vec_env_cls=SubprocVecEnv)
         callback = [EvalCallback(eval_env=eval_env, warn=False, **config["eval_kwargs"]), callback]
     
-    learner = config["learner_class"]("MlpPolicy", env, **config["learner_kwargs"])
+    learner = config["learner_class"]("MultiInputPolicy", env, **config["learner_kwargs"])
     learner.learn(callback=callback, **config["train_kwargs"])
     learner.save(os.path.join(config["log_path"], config["log"], "final.zip"))
     

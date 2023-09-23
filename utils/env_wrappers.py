@@ -1,13 +1,15 @@
 import os
-from typing import Any, Callable, Dict, Optional, SupportsFloat, Type, Union, Tuple
 import time
+from typing import (Any, Callable, Dict, Optional, SupportsFloat, Tuple, Type,
+                    Union)
 
 import gymnasium as gym
-import stable_baselines3
 import numpy as np
+import panda_gym
+import stable_baselines3
+from gymnasium.core import ActType, ObsType
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv
 from stable_baselines3.common.vec_env.patch_gym import _patch_env
-from gymnasium.core import ActType, ObsType
 
 
 class SparseRewardWrapper(gym.RewardWrapper):
@@ -482,10 +484,7 @@ def make_vec_env(
     
 def get_env(env_name, wrappers=["SparseRewardWrapper", "__envwrapper__", "gym.wrappers.FlattenObservation"], wrapper_kwargs=[{}, {}, {}], ignore_keyword=None):
     # works with classes in this file and with classes that are imported at the beginning.
-    try:
-        env = gym.make(env_name, reward_type="dense")
-    except TypeError:
-        env = gym.make(env_name)
+    env = gym.make(env_name)
     
     for i, wrapper_name in enumerate(wrappers):
         if wrapper_name == "__envwrapper__":

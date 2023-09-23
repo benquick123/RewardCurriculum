@@ -1,40 +1,37 @@
-from collections import OrderedDict
 from copy import deepcopy
-from typing import Any, ClassVar, Dict, List, Optional, Tuple, Type, Union
+from typing import ClassVar, Dict, Optional, Tuple, Type
 
 import numpy as np
+import sb3_contrib
 import stable_baselines3
 import torch as th
 from gymnasium import spaces
-from stable_baselines3.common.buffers import ReplayBuffer
+from sb3_contrib.common.utils import quantile_huber_loss
 from stable_baselines3.common.callbacks import BaseCallback
-from stable_baselines3.common.noise import ActionNoise, VectorizedActionNoise
+from stable_baselines3.common.noise import ActionNoise
 from stable_baselines3.common.policies import BasePolicy
-from stable_baselines3.common.type_aliases import (MaybeCallback,
-                                                   RolloutReturn, TrainFreq)
-from stable_baselines3.common.utils import (polyak_update,
-                                            should_collect_more_steps)
-from stable_baselines3.common.vec_env import VecEnv
-from torch.nn import functional as F
+from stable_baselines3.common.type_aliases import MaybeCallback
+from stable_baselines3.common.utils import polyak_update
 
 from cl_algorithms.single_task import SingleTask
 from rl_algorithms.replay_buffer import HerReplayBuffer, ReplayBuffer
-from rl_algorithms.sac_policies import (CnnPolicy, MlpPolicy, MultiInputPolicy,
-                                        SACPolicy)
+from rl_algorithms.tqc_policies import (CnnPolicy, MlpPolicy, MultiInputPolicy,
+                                        TQCPolicy)
 from utils.callbacks import ProgressBarCallback
 from utils.retrospective_loss import retrospective_loss_fn
 
 
-class SAC(stable_baselines3.SAC):
+class TQC(sb3_contrib.TQC):
     
     policy_aliases: ClassVar[Dict[str, Type[BasePolicy]]] = {
         "MlpPolicy": MlpPolicy,
         "CnnPolicy": CnnPolicy,
         "MultiInputPolicy": MultiInputPolicy,
     }
-    policy: SACPolicy
+    policy: TQCPolicy
     
     def __init__(self, policy, env, reward_dim=1, scheduler_class=SingleTask, scheduler_kwargs={}, use_retrospective_loss=False, **kwargs):
+        
         kwargs["replay_buffer_class"] = HerReplayBuffer
         if "replay_buffer_kwargs" not in kwargs:
             kwargs["replay_buffer_kwargs"] = dict()
@@ -42,8 +39,8 @@ class SAC(stable_baselines3.SAC):
         self.scheduler = scheduler_class(reward_dim=reward_dim, **scheduler_kwargs)
         
         self.use_retrospective_loss = use_retrospective_loss
-        super(SAC, self).__init__(policy, env, **kwargs)
-    
+        super().__init__(policy, env, **kwargs)
+        
     def _setup_model(self) -> None:
         super()._setup_model()
         
@@ -69,123 +66,7 @@ class SAC(stable_baselines3.SAC):
         
         if self.use_retrospective_loss:
             self.critic_retro = self.policy.critic_retro
-      
-    def collect_rollouts(
-        self,
-        env: VecEnv,
-        callback: BaseCallback,
-        train_freq: TrainFreq,
-        replay_buffer: ReplayBuffer,
-        action_noise: Optional[ActionNoise] = None,
-        learning_starts: int = 0,
-        log_interval: Optional[int] = None,
-    ) -> RolloutReturn:
-        # Switch to eval mode (this affects batch norm / dropout)
-        
-        return super().collect_rollouts(env, callback, train_freq, replay_buffer, action_noise, learning_starts, log_interval)
-        
-        self.policy.set_training_mode(False)
-
-        num_collected_steps, num_collected_episodes = 0, 0
-
-        assert isinstance(env, VecEnv), "You must pass a VecEnv"
-        assert train_freq.frequency > 0, "Should at least collect one step or episode."
-
-        action_mini_experience_buffer = [[] for _ in range(env.num_envs)]
-        obs_mini_experience_buffer = [[] for _ in range(env.num_envs)]
-        last_obs_mini_experience_buffer = [[] for _ in range(env.num_envs)]
-        reward_mini_experience_buffer = [[] for _ in range(env.num_envs)]
-        done_mini_experience_buffer = [[] for _ in range(env.num_envs)]
-        info_mini_experience_buffer = [[] for _ in range(env.num_envs)]
-        
-        # Vectorize action noise if needed
-        if action_noise is not None and env.num_envs > 1 and not isinstance(action_noise, VectorizedActionNoise):
-            action_noise = VectorizedActionNoise(action_noise, env.num_envs)
-
-        if self.use_sde:
-            self.actor.reset_noise(env.num_envs)
-
-        callback.on_rollout_start()
-        
-        # print("2. ROLLOUT:", self.scheduler.get_current_weights())
-        
-        continue_training = True
-        while should_collect_more_steps(train_freq, num_collected_steps, num_collected_episodes):
-            if self.use_sde and self.sde_sample_freq > 0 and num_collected_steps % self.sde_sample_freq == 0:
-                # Sample a new noise matrix
-                self.actor.reset_noise(env.num_envs)
-
-            # Select action randomly or according to policy
-            actions, buffer_actions = self._sample_action(learning_starts, action_noise, env.num_envs)
-
-            # Rescale and perform action
-            new_obs, rewards, dones, infos = env.step(actions)
-
-            # Retrieve reward and episode length if using Monitor wrapper
-            self._update_info_buffer(infos, dones)
-
-            # Store data in replay buffer (normalized action and unnormalized observation)
-            for idx in range(env.num_envs):
-                action_mini_experience_buffer[idx].append(buffer_actions[idx])
-                if isinstance(self._last_obs, OrderedDict):
-                    last_obs_mini_experience_buffer[idx].append(OrderedDict([(key, value[idx]) for key, value in self._last_obs.items()]))
-                    obs_mini_experience_buffer[idx].append(OrderedDict([(key, value[idx]) for key, value in new_obs.items()]))
-                else:
-                    last_obs_mini_experience_buffer[idx].append(self._last_obs[idx])
-                    obs_mini_experience_buffer[idx].append(new_obs[idx])
-                reward_mini_experience_buffer[idx].append(rewards[idx])
-                done_mini_experience_buffer[idx].append(dones[idx])
-                info_mini_experience_buffer[idx].append(infos[idx])
-            self._last_obs = new_obs
             
-            # Give access to local variables
-            callback.update_locals(locals())
-            # Only stop training if return value is False, not when it is None.
-            if callback.on_step() is False:
-                return RolloutReturn(num_collected_steps * env.num_envs, num_collected_episodes, continue_training=False)
-            
-            self._update_current_progress_remaining(self.num_timesteps, self._total_timesteps)
-
-            # This has to do with the _on_step method of the actual algo.
-            self._on_step()
-
-            for idx, done in enumerate(dones):
-                if done:
-                    self._store_transition(replay_buffer, 
-                                           np.stack(action_mini_experience_buffer[idx], axis=0), 
-                                           np.stack(last_obs_mini_experience_buffer[idx], axis=0),
-                                           np.stack(obs_mini_experience_buffer[idx], axis=0),
-                                           np.stack(reward_mini_experience_buffer[idx], axis=0), 
-                                           np.stack(done_mini_experience_buffer[idx], axis=0), 
-                                           info_mini_experience_buffer[idx])
-                    
-                    self.num_timesteps += len(action_mini_experience_buffer[idx])
-                    num_collected_steps += len(action_mini_experience_buffer[idx]) / env.num_envs
-                    
-                    action_mini_experience_buffer[idx] = []
-                    obs_mini_experience_buffer[idx] = []
-                    last_obs_mini_experience_buffer[idx] = []
-                    reward_mini_experience_buffer[idx] = []
-                    done_mini_experience_buffer[idx] = []
-                    info_mini_experience_buffer[idx] = []
-                    
-                    # Update stats
-                    num_collected_episodes += 1
-                    self._episode_num += 1
-
-                    if action_noise is not None:
-                        kwargs = dict(indices=[idx]) if env.num_envs > 1 else {}
-                        action_noise.reset(**kwargs)
-
-                    # Log training infos
-                    if log_interval is not None and self._episode_num % log_interval == 0:
-                        self._dump_logs()
-                    
-        assert self.replay_buffer.full or (not self.replay_buffer.full and self.replay_buffer.pos == self.num_timesteps), "Replay buffer vs. collected number of steps mismatch."
-        callback.on_rollout_end()
-
-        return RolloutReturn(num_collected_steps * env.num_envs, num_collected_episodes, continue_training)
-    
     def train(self, gradient_steps: int, batch_size: int = 64) -> None:
         # Switch to train mode (this affects batch norm / dropout)
         self.policy.set_training_mode(True)
@@ -216,7 +97,7 @@ class SAC(stable_baselines3.SAC):
         for gradient_step in range(gradient_steps):
             # Sample replay buffer
             replay_data = self.replay_buffer.sample(batch_size, env=self._vec_normalize_env)  # type: ignore[union-attr]
-
+            
             reward_weights = th.tensor(self.scheduler.sample_batch(remaining_batch_size), dtype=th.float32).to(self.device)
             reward_weights = th.concatenate((reward_weights, current_reward_weights, main_task_reward_weights), dim=0)
             
@@ -262,31 +143,35 @@ class SAC(stable_baselines3.SAC):
             with th.no_grad():
                 # Select action according to policy
                 next_actions, next_log_prob = self.actor.action_log_prob(next_observations)
-                # Compute the next Q values: min over all critics targets
-                critic_indices = th.randperm(self.policy.critic.n_critics)[:2]
-                next_q_values = th.cat(self.critic_target(next_observations, next_actions), dim=1)
-                next_q_values = next_q_values[:, critic_indices]
-                
-                next_q_values, _ = th.min(next_q_values, dim=1, keepdim=True)
-                # add entropy term
-                next_q_values = next_q_values - ent_coef * next_log_prob.reshape(-1, 1)
+                # Compute and cut quantiles at the next state
+                # batch x nets x quantiles
+                next_quantiles = self.critic_target(next_observations, next_actions)
+
+                # Sort and drop top k quantiles to control overestimation.
+                n_target_quantiles = self.critic.quantiles_total - self.top_quantiles_to_drop_per_net * self.critic.n_critics
+                next_quantiles, _ = th.sort(next_quantiles.reshape(batch_size, -1))
+                next_quantiles = next_quantiles[:, :n_target_quantiles]
+
                 # td error + entropy term
-                target_q_values = rewards + (1 - replay_data.dones) * self.gamma * next_q_values
+                target_quantiles = next_quantiles - ent_coef * next_log_prob.reshape(-1, 1)
+                target_quantiles = rewards + (1 - replay_data.dones) * self.gamma * target_quantiles
+                # Make target_quantiles broadcastable to (batch_size, n_critics, n_target_quantiles).
+                target_quantiles.unsqueeze_(dim=1)
 
-            # Get current Q-values estimates for each critic network
-            # using action from the replay buffer
-            current_q_values = self.critic(observations, replay_data.actions.to(th.float32))
-
-            # Compute critic loss
-            critic_loss = 0.5 * sum(F.mse_loss(current_q, target_q_values) for current_q in current_q_values)
-            assert isinstance(critic_loss, th.Tensor)  # for type checker
-            critic_losses.append(critic_loss.item())  # type: ignore[union-attr]
+            # Get current Quantile estimates using action from the replay buffer
+            current_quantiles = self.critic(observations, replay_data.actions.to(th.float32))
+            # Compute critic loss, not summing over the quantile dimension as in the paper.
+            critic_loss = quantile_huber_loss(current_quantiles, target_quantiles, sum_over_quantiles=False)
+            critic_losses.append(critic_loss.item())
             
             if gradient_step > 0 and self.use_retrospective_loss:
-                with th.no_grad():
-                    retro_q_values = self.critic_retro(observations, replay_data.actions.to(th.float32))
+                if gradient_step == 1:
+                    print("Retrospective loss has not been tested with TQC yet! Probably doesn't work.")
                     
-                retrospective_loss = sum([retrospective_loss_fn(current_q, retro_q, target_q_values, K=2, scaled=True) for current_q, retro_q in zip(current_q_values, retro_q_values)])
+                with th.no_grad():
+                    retro_quantiles = self.critic_retro(observations, replay_data.actions.to(th.float32))
+                    
+                retrospective_loss = sum([retrospective_loss_fn(current_q, retro_q, target_quantiles, K=2, scaled=True) for current_q, retro_q in zip(current_quantiles, retro_quantiles)])
                 
                 critic_loss += retrospective_loss
 
@@ -296,13 +181,7 @@ class SAC(stable_baselines3.SAC):
             self.critic.optimizer.step()
 
             # Compute actor loss
-            # Alternative: actor_loss = th.mean(log_prob - qf1_pi)
-            # Min over all critic networks
-            q_values_pi = th.cat(self.critic(observations, actions_pi), dim=1)
-            if self.policy.critic.n_critics == 2:
-                qf_pi, _ = th.min(q_values_pi, dim=1, keepdim=True)
-            else:
-                qf_pi = th.mean(q_values_pi, dim=1, keepdim=True)
+            qf_pi = self.critic(observations, actions_pi).mean(dim=2).mean(dim=1, keepdim=True)
             actor_loss = (ent_coef * log_prob - qf_pi).mean()
             actor_losses.append(actor_loss.item())
 
@@ -314,7 +193,7 @@ class SAC(stable_baselines3.SAC):
             # Update target networks
             if gradient_step % self.target_update_interval == 0:
                 polyak_update(self.critic.parameters(), self.critic_target.parameters(), self.tau)
-                # Copy running stats, see GH issue #996
+                # Copy running stats, see https://github.com/DLR-RM/stable-baselines3/issues/996
                 polyak_update(self.batch_norm_stats, self.batch_norm_stats_target, 1.0)
                 
         if self.use_retrospective_loss:
@@ -329,46 +208,6 @@ class SAC(stable_baselines3.SAC):
         if len(ent_coef_losses) > 0:
             self.logger.record("train/ent_coef_loss", np.mean(ent_coef_losses))
     
-    def _store_transition1(
-        self,
-        replay_buffer: ReplayBuffer,
-        buffer_action: np.ndarray,
-        last_obs: Union[np.ndarray, Dict[str, np.ndarray]],
-        new_obs: Union[np.ndarray, Dict[str, np.ndarray]],
-        reward: np.ndarray,
-        dones: np.ndarray,
-        infos: List[Dict[str, Any]],
-    ) -> None:
-        
-        # Store only the unnormalized version
-        if self._vec_normalize_env is not None:
-            print("Case when observation normalization is used is not implemented.")
-            raise NotImplementedError
-
-        # Avoid modification by reference
-        last_obs = deepcopy(last_obs)
-        next_obs = deepcopy(new_obs)
-        # As the VecEnv resets automatically, new_obs is already the
-        # first observation of the next episode
-        for i, done in enumerate(dones):
-            if done and infos[i].get("terminal_observation") is not None:
-                if isinstance(next_obs, dict):
-                    next_obs_ = infos[i]["terminal_observation"]
-                    # Replace next obs for the correct envs
-                    for key in next_obs.keys():
-                        next_obs[key][i] = next_obs_[key]
-                else:
-                    next_obs[i] = infos[i]["terminal_observation"]
-
-        replay_buffer.add(
-            last_obs,
-            next_obs,
-            buffer_action,
-            reward,
-            dones,
-            infos,
-        )
-        
     def _sample_action(
         self,
         learning_starts: int,
@@ -401,7 +240,7 @@ class SAC(stable_baselines3.SAC):
             buffer_action = unscaled_action
             action = buffer_action
         return action, buffer_action
-    
+            
     def _setup_learn(
         self,
         total_timesteps: int,

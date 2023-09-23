@@ -5,7 +5,7 @@ import numpy as np
 import torch as th
 from gymnasium import spaces
 import stable_baselines3
-from stable_baselines3.common.type_aliases import ReplayBufferSamples
+from stable_baselines3.common.type_aliases import ReplayBufferSamples, TensorDict
 from stable_baselines3.common.vec_env import VecNormalize
 
 
@@ -90,3 +90,16 @@ class ReplayBuffer(stable_baselines3.common.buffers.ReplayBuffer):
             self._normalize_reward(self.rewards[batch_inds, env_indices].reshape(-1, self.reward_dim), env),
         )
         return ReplayBufferSamples(*tuple(map(self.to_torch, data)))
+    
+
+class HerReplayBuffer(stable_baselines3.her.HerReplayBuffer):
+    
+    def __init__(self, *args, reward_dim, **kwargs):
+        assert kwargs["n_envs"] == 1
+        super().__init__(*args, **kwargs)
+        
+        self.reward_dim = reward_dim
+        self.rewards = np.zeros((self.buffer_size, self.n_envs, self.reward_dim), dtype=np.float32)
+        self.reward_weights = np.zeros((self.buffer_size, self.n_envs, self.reward_dim), dtype=np.float32)
+        
+    

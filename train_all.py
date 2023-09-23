@@ -95,8 +95,18 @@ if __name__ == "__main__":
         # "--config_path configs/experiment_sac_alpgmm.json --env_name dm_control/walker-walk-v0",
         
         # PandaStack
-        "--config_path configs/experiment_sac_single_task_sparse.json --env_name PandaStack-v3 --environment.wrapper_kwargs.0.reward_threshold -0.1",
-        "--config_path configs/experiment_sac_single_task_dense.json --env_name PandaStack-v3 --environment.wrapper_kwargs.0.reward_threshold -0.1"
+        # "--config_path configs/experiment_sac_single_task_sparse.json --env_name PandaStack-v3 --environment.wrapper_kwargs.0.reward_threshold -0.1",
+        # "--config_path configs/experiment_sac_single_task_dense.json --env_name PandaStack-v3 --environment.wrapper_kwargs.0.reward_threshold -0.1"
+        
+        # PandaPush and PandaPickAndPlace with paper hyperparams
+        # "--config_path configs/experiment_sac_single_task_dense.json --env_name PandaPush-v3",
+        # "--config_path configs/experiment_sac_single_task_sparse.json --env_name PandaPush-v3",
+        # "--config_path configs/experiment_sac_single_task_dense.json --env_name PandaPickAndPlace-v3",
+        # "--config_path configs/experiment_sac_single_task_sparse.json --env_name PandaPickAndPlace-v3",
+        # "--config_path configs/experiment_sac_single_task_dense.json --env_name PandaPush-v3 --learner_kwargs.use_retrospective_loss True",
+        # "--config_path configs/experiment_sac_single_task_sparse.json --env_name PandaPush-v3 --learner_kwargs.use_retrospective_loss True",
+        # "--config_path configs/experiment_sac_single_task_dense.json --env_name PandaPickAndPlace-v3 --learner_kwargs.use_retrospective_loss True",
+        # "--config_path configs/experiment_sac_single_task_sparse.json --env_name PandaPickAndPlace-v3 --learner_kwargs.use_retrospective_loss True"
     ]
     
     command = "python train.py %s --seed %d"
