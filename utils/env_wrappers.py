@@ -18,6 +18,7 @@ class SparseRewardWrapper(gym.RewardWrapper):
         super(SparseRewardWrapper, self).__init__(env)
         self.reward_threshold = reward_threshold
         self.threshold_relationship = threshold_relationship
+        assert self.threshold_relationship in {"larger", "smaller"}, 'self.threshold_relationship not in {"larger", "smaller"}'
         
     def step(self, action: Any) -> tuple[Any, SupportsFloat, bool, bool, dict[str, Any]]:
         observation, reward, terminated, truncated, info = self.env.step(action)
@@ -25,13 +26,24 @@ class SparseRewardWrapper(gym.RewardWrapper):
         return observation, self.reward(reward), terminated, truncated, info
     
     def reward(self, reward):
-        assert isinstance(reward, float) or isinstance(reward, int), f"A dense reward must be a number before converting it to sparse. Got {reward}"
-        assert self.threshold_relationship in {"larger", "smaller"}, 'self.threshold_relationship not in {"larger", "smaller"}'
+        # assert isinstance(reward, float) or isinstance(reward, int), f"A dense reward must be a number before converting it to sparse. Got {reward}"
         if self.threshold_relationship == "larger":
             reward = reward >= self.reward_threshold
         else:
             reward = reward <= self.reward_threshold
-        return float(reward)
+            
+        if isinstance(reward, np.ndarray):
+            return reward.astype(float)
+        else:
+            return float(reward)
+    
+    def compute_reward(self, achieved_goal, desired_goal, infos):
+        reward = self.env.compute_reward(achieved_goal, desired_goal, infos)
+        if self.threshold_relationship == "larger":
+            reward = reward >= self.reward_threshold
+        else:
+            reward = reward <= self.reward_threshold
+        return reward.astype(float)
     
 
 class DelayedRewardWrapper(gym.RewardWrapper):
@@ -63,8 +75,24 @@ class AuxRewardWrapper(gym.RewardWrapper):
     
     def reward(self, reward, observation, action):
         return np.array([reward], dtype=float)
-        
     
+    def compute_reward(self, achieved_goal, desired_goal, infos):
+        return self.env.compute_reward(achieved_goal, desired_goal, infos).reshape(len(achieved_goal), -1)
+
+
+class MainRewardWrapper(gym.RewardWrapper):
+    
+    def reward(self, reward):
+        # Only returns the last element from the rewards array, assuming that corresponds to the main reward.
+        assert isinstance(reward, np.ndarray), f"Did not receive a numpy array. Got {reward}"
+        assert len(reward.shape) == 1
+        
+        return reward[-1]
+    
+    def compute_reward(self, achieved_goal, desired_goal, infos):
+        return self.env.compute_reward(achieved_goal, desired_goal, infos).reshape(len(achieved_goal), -1)[:, -1:]
+        
+
 # dm_control environment wrappers
 
 class AcrobotAuxRewardWrapper(AuxRewardWrapper):

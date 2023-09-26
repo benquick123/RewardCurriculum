@@ -1,0 +1,17 @@
+{
+    "template": "configs/templates/experiment_tqc.json",
+    "log_path": "./results/alpgmm",
+    "learner_kwargs": {
+        "scheduler_class": "cl_algorithms.alpgmm.ALPGMM",
+        "scheduler_kwargs": {
+            "update_frequency": 5,
+            "fitting_buffer_size": 50,
+            "nb_neighbours": 3,
+            "nb_bootstrap": 5,
+            "random_task_ratio": 0.2,
+            "potential_clusters": [2, 11, 1],
+            "gmm_fitness_fn": "aic", 
+            "gmm_kwargs": {}
+        }
+    }
+}

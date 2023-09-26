@@ -1,5 +1,6 @@
 from copy import deepcopy
-from typing import ClassVar, Dict, Optional, Tuple, Type
+from functools import partial
+from typing import ClassVar, Dict, Optional, Tuple, Type, Union, List, Any
 
 import numpy as np
 import sb3_contrib
@@ -32,11 +33,12 @@ class TQC(sb3_contrib.TQC):
     
     def __init__(self, policy, env, reward_dim=1, scheduler_class=SingleTask, scheduler_kwargs={}, use_retrospective_loss=False, **kwargs):
         
+        self.scheduler = scheduler_class(reward_dim=reward_dim, **scheduler_kwargs)
         kwargs["replay_buffer_class"] = HerReplayBuffer
         if "replay_buffer_kwargs" not in kwargs:
             kwargs["replay_buffer_kwargs"] = dict()
-        kwargs["replay_buffer_kwargs"]["reward_dim"] = reward_dim
-        self.scheduler = scheduler_class(reward_dim=reward_dim, **scheduler_kwargs)
+        # kwargs["replay_buffer_kwargs"]["reward_dim"] = reward_dim
+        kwargs["replay_buffer_kwargs"]["scheduler"] = self.scheduler
         
         self.use_retrospective_loss = use_retrospective_loss
         super().__init__(policy, env, **kwargs)
@@ -68,6 +70,7 @@ class TQC(sb3_contrib.TQC):
             self.critic_retro = self.policy.critic_retro
             
     def train(self, gradient_steps: int, batch_size: int = 64) -> None:
+        return super().train(gradient_steps, batch_size)
         # Switch to train mode (this affects batch norm / dropout)
         self.policy.set_training_mode(True)
         # Update optimizers learning rate
@@ -80,44 +83,17 @@ class TQC(sb3_contrib.TQC):
 
         ent_coef_losses, ent_coefs = [], []
         actor_losses, critic_losses = [], []
-        
-        current_reward_weights = self.scheduler.get_current_weights()
-        # print("1. TRAIN:", current_reward_weights)
-        current_reward_weights = current_reward_weights.reshape((1, -1))
-        # make a proportion of the weights correspond to current reward weights.
-        current_reward_weights = np.repeat(current_reward_weights, int(0.2 * batch_size), axis=0)
-        current_reward_weights = th.tensor(current_reward_weights, dtype=th.float32).to(self.device)
-        
-        # make a proportion of the weights correspond to the main reward.
-        main_task_reward_weights = th.zeros((int(0.1 * batch_size), self.scheduler.reward_dim), dtype=th.float32).to(self.device)
-        main_task_reward_weights[:, -1] = 1.0
-        
-        remaining_batch_size = batch_size - len(current_reward_weights) - len(main_task_reward_weights)
 
         for gradient_step in range(gradient_steps):
             # Sample replay buffer
             replay_data = self.replay_buffer.sample(batch_size, env=self._vec_normalize_env)  # type: ignore[union-attr]
             
-            reward_weights = th.tensor(self.scheduler.sample_batch(remaining_batch_size), dtype=th.float32).to(self.device)
-            reward_weights = th.concatenate((reward_weights, current_reward_weights, main_task_reward_weights), dim=0)
-            
-            if isinstance(replay_data.observations, dict):
-                replay_data.observations["observation"] = th.cat((replay_data.observations["observation"], reward_weights), dim=1)
-                observations = replay_data.observations
-                replay_data.next_observations["observation"] = th.cat((replay_data.next_observations["observation"], reward_weights), dim=1)
-                next_observations = replay_data.next_observations
-            else:
-                observations = th.cat((replay_data.observations, reward_weights), dim=1)
-                next_observations = th.cat((replay_data.next_observations, reward_weights), dim=1)
-            rewards = replay_data.rewards.reshape(batch_size, 1, -1) @ reward_weights.reshape(batch_size, 1, -1).mT
-            rewards = rewards.reshape(batch_size, 1)
-
             # We need to sample because `log_std` may have changed between two gradient steps
             if self.use_sde:
                 self.actor.reset_noise()
 
             # Action by the current actor for the sampled state
-            actions_pi, log_prob = self.actor.action_log_prob(observations)
+            actions_pi, log_prob = self.actor.action_log_prob(replay_data.observations)
             log_prob = log_prob.reshape(-1, 1)
 
             ent_coef_loss = None
@@ -142,10 +118,10 @@ class TQC(sb3_contrib.TQC):
 
             with th.no_grad():
                 # Select action according to policy
-                next_actions, next_log_prob = self.actor.action_log_prob(next_observations)
+                next_actions, next_log_prob = self.actor.action_log_prob(replay_data.next_observations)
                 # Compute and cut quantiles at the next state
                 # batch x nets x quantiles
-                next_quantiles = self.critic_target(next_observations, next_actions)
+                next_quantiles = self.critic_target(replay_data.next_observations, next_actions)
 
                 # Sort and drop top k quantiles to control overestimation.
                 n_target_quantiles = self.critic.quantiles_total - self.top_quantiles_to_drop_per_net * self.critic.n_critics
@@ -154,24 +130,32 @@ class TQC(sb3_contrib.TQC):
 
                 # td error + entropy term
                 target_quantiles = next_quantiles - ent_coef * next_log_prob.reshape(-1, 1)
-                target_quantiles = rewards + (1 - replay_data.dones) * self.gamma * target_quantiles
+                target_quantiles = replay_data.rewards + (1 - replay_data.dones) * self.gamma * target_quantiles
                 # Make target_quantiles broadcastable to (batch_size, n_critics, n_target_quantiles).
                 target_quantiles.unsqueeze_(dim=1)
 
             # Get current Quantile estimates using action from the replay buffer
-            current_quantiles = self.critic(observations, replay_data.actions.to(th.float32))
+            current_quantiles = self.critic(replay_data.observations, replay_data.actions.to(th.float32))
             # Compute critic loss, not summing over the quantile dimension as in the paper.
             critic_loss = quantile_huber_loss(current_quantiles, target_quantiles, sum_over_quantiles=False)
             critic_losses.append(critic_loss.item())
             
-            if gradient_step > 0 and self.use_retrospective_loss:
-                if gradient_step == 1:
+            if self._n_updates > 0 and gradient_step > 0 and self.use_retrospective_loss:
+                if self._n_updates == 1:
                     print("Retrospective loss has not been tested with TQC yet! Probably doesn't work.")
                     
                 with th.no_grad():
-                    retro_quantiles = self.critic_retro(observations, replay_data.actions.to(th.float32))
+                    retro_quantiles = self.critic_retro(replay_data.observations, replay_data.actions.to(th.float32))
                     
-                retrospective_loss = sum([retrospective_loss_fn(current_q, retro_q, target_quantiles, K=2, scaled=True) for current_q, retro_q in zip(current_quantiles, retro_quantiles)])
+                retrospective_loss = sum([
+                    retrospective_loss_fn(
+                        current_quantiles[:, i, :].unsqueeze(1),
+                        retro_quantiles[:, i, :].unsqueeze(1),
+                        target_quantiles,
+                        K=2, scaled=True, distance=lambda: partial(quantile_huber_loss, sum_over_quantiles=False)
+                    ) for i in range(self.critic.n_critics)
+                ])
+
                 
                 critic_loss += retrospective_loss
 
@@ -181,7 +165,7 @@ class TQC(sb3_contrib.TQC):
             self.critic.optimizer.step()
 
             # Compute actor loss
-            qf_pi = self.critic(observations, actions_pi).mean(dim=2).mean(dim=1, keepdim=True)
+            qf_pi = self.critic(replay_data.observations, actions_pi).mean(dim=2).mean(dim=1, keepdim=True)
             actor_loss = (ent_coef * log_prob - qf_pi).mean()
             actor_losses.append(actor_loss.item())
 
@@ -207,6 +191,58 @@ class TQC(sb3_contrib.TQC):
         self.logger.record("train/critic_loss", np.mean(critic_losses))
         if len(ent_coef_losses) > 0:
             self.logger.record("train/ent_coef_loss", np.mean(ent_coef_losses))
+    
+    def _store_transition(
+        self,
+        replay_buffer: ReplayBuffer,
+        buffer_action: np.ndarray,
+        new_obs: Union[np.ndarray, Dict[str, np.ndarray]],
+        reward: np.ndarray,
+        dones: np.ndarray,
+        infos: List[Dict[str, Any]],
+    ) -> None:
+        # Store only the unnormalized version
+        if self._vec_normalize_env is not None:
+            new_obs_ = self._vec_normalize_env.get_original_obs()
+            reward_ = self._vec_normalize_env.get_original_reward()
+        else:
+            # Avoid changing the original ones
+            self._last_original_obs, new_obs_, reward_ = self._last_obs, new_obs, reward
+
+        # Avoid modification by reference
+        next_obs = deepcopy(new_obs_)
+        # As the VecEnv resets automatically, new_obs is already the
+        # first observation of the next episode
+        for i, done in enumerate(dones):
+            if done and infos[i].get("terminal_observation") is not None:
+                if isinstance(next_obs, dict):
+                    next_obs_ = infos[i]["terminal_observation"]
+                    # VecNormalize normalizes the terminal observation
+                    if self._vec_normalize_env is not None:
+                        next_obs_ = self._vec_normalize_env.unnormalize_obs(next_obs_)
+                    # Replace next obs for the correct envs
+                    for key in next_obs.keys():
+                        next_obs[key][i] = next_obs_[key]
+                else:
+                    next_obs[i] = infos[i]["terminal_observation"]
+                    # VecNormalize normalizes the terminal observation
+                    if self._vec_normalize_env is not None:
+                        next_obs[i] = self._vec_normalize_env.unnormalize_obs(next_obs[i, :])
+
+        replay_buffer.add(
+            self._last_original_obs,
+            next_obs,
+            buffer_action,
+            reward_,
+            self.scheduler.current_weights,
+            dones,
+            infos,
+        )
+
+        self._last_obs = new_obs
+        # Save the unnormalized observation
+        if self._vec_normalize_env is not None:
+            self._last_original_obs = new_obs_
     
     def _sample_action(
         self,

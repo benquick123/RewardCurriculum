@@ -12,7 +12,7 @@ def run_command(command):
 if __name__ == "__main__":
     
     start_seed = 0
-    n_seeds = 5
+    n_seeds = 3
     max_processes = 4
     
     experiment_configs = [
@@ -107,6 +107,18 @@ if __name__ == "__main__":
         # "--config_path configs/experiment_sac_single_task_sparse.json --env_name PandaPush-v3 --learner_kwargs.use_retrospective_loss True",
         # "--config_path configs/experiment_sac_single_task_dense.json --env_name PandaPickAndPlace-v3 --learner_kwargs.use_retrospective_loss True",
         # "--config_path configs/experiment_sac_single_task_sparse.json --env_name PandaPickAndPlace-v3 --learner_kwargs.use_retrospective_loss True"
+        
+        # Panda and TQC
+        "--config_path configs/experiment_tqc_single_task_sparse.json --env_name PandaPushDense-v3",
+        "--config_path configs/experiment_tqc_single_task_sparse.json --env_name PandaPushDense-v3 --learner_kwargs.use_retrospective_loss True",
+        "--config_path configs/experiment_tqc_single_task_sparse.json --env_name PandaPickAndPlaceDense-v3",
+        "--config_path configs/experiment_tqc_single_task_sparse.json --env_name PandaPickAndPlaceDense-v3 --learner_kwargs.use_retrospective_loss True",
+        # "--config_path configs/experiment_tqc_single_task_dense.json --env_name PandaPushDense-v3",
+        # "--config_path configs/experiment_tqc_single_task_dense.json --env_name PandaPickAndPlaceDense-v3",
+        
+        # "--config_path configs/experiment_tqc_single_task_sparse.json --env_name PandaPush-v3 --log sparse_env_termination",
+        # "--config_path configs/experiment_tqc_single_task_sparse.json --env_name PandaPickAndPlace-v3 --log sparse_env_termination",
+        
     ]
     
     command = "python train.py %s --seed %d"

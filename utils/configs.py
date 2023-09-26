@@ -99,8 +99,8 @@ def get_config(path, args, remaining_args):
         experiment_id = args.env_name.split("/")[-1] + "_" + config["learner_class"].split(".")[-1].lower() + "_" + config["learner_kwargs"]["scheduler_class"].split(".")[-1].lower() + "_" + str(config["seed"])
         config["log"] += "_" + experiment_id
         if len(remaining_args) > 0:
-            config["log"] += "_" + "_".join([arg_name[2:].split(".")[-1] + "=" + value for arg_name, value in zip(remaining_args[0::2], remaining_args[1::2])])
-        # os.makedirs(os.path.join(config["log_path"], config["log"]), exist_ok=exist_ok)
+            # make a custom folder name based on cmd arguments; ignore --log since it is already part of the folder name.
+            config["log"] += "_" + "_".join([arg_name[2:].split(".")[-1] + "=" + value for arg_name, value in zip(remaining_args[0::2], remaining_args[1::2]) if arg_name[2:] != "log"])
         
         config["tb_log_name"] = experiment_id
         config["learner_kwargs"]["tensorboard_log"] = os.path.join(config["log_path"], config["log"], "tb")

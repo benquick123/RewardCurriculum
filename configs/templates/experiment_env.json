@@ -1,7 +1,7 @@
 {
     "environment": {
         "n_envs": 1,
-        "wrappers": ["SparseRewardWrapper", "__envwrapper__", "gym.wrappers.FlattenObservation"],
-        "wrapper_kwargs": [{"reward_threshold": -0.05}, {}, {}]
+        "wrappers": ["SparseRewardWrapper"],
+        "wrapper_kwargs": [{"reward_threshold": -0.05}]
     }
 }

@@ -43,7 +43,6 @@ if __name__ == "__main__":
         wrappers = []
         if "SparseRewardWrapper" in config["environment"]["wrappers"]:
             wrappers += ["SparseRewardWrapper"]
-        # wrappers += ["gym.wrappers.FlattenObservation"]
         
         wrapper_kwargs = []
         for i in range(len(wrappers)):
