@@ -1,0 +1,14 @@
+{
+    "template": "configs/templates/experiment_tqc.json",
+    "learner_kwargs": {
+        "scheduler_class": "cl_algorithms.currot.CurrOT",
+        "scheduler_kwargs": {
+            "update_frequency": 40,
+            "update_weights_frequency": 5,
+            "success_threshold": 10,
+            "epsilon": 0.5,
+            "tau": 1,
+            "sampling_strategy": "past"
+        }
+    }
+}

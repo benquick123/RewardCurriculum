@@ -10,9 +10,8 @@ def run_command(command):
 
 
 if __name__ == "__main__":
-    
     start_seed = 0
-    n_seeds = 3
+    n_seeds = 5
     max_processes = 4
     
     experiment_configs = [
@@ -109,16 +108,29 @@ if __name__ == "__main__":
         # "--config_path configs/experiment_sac_single_task_sparse.json --env_name PandaPickAndPlace-v3 --learner_kwargs.use_retrospective_loss True"
         
         # Panda and TQC
-        "--config_path configs/experiment_tqc_single_task_sparse.json --env_name PandaPushDense-v3",
-        "--config_path configs/experiment_tqc_single_task_sparse.json --env_name PandaPushDense-v3 --learner_kwargs.use_retrospective_loss True",
-        "--config_path configs/experiment_tqc_single_task_sparse.json --env_name PandaPickAndPlaceDense-v3",
-        "--config_path configs/experiment_tqc_single_task_sparse.json --env_name PandaPickAndPlaceDense-v3 --learner_kwargs.use_retrospective_loss True",
+        # "--config_path configs/experiment_tqc_single_task_sparse.json --env_name PandaPushDense-v3",
+        # "--config_path configs/experiment_tqc_single_task_sparse.json --env_name PandaPushDense-v3 --learner_kwargs.use_retrospective_loss True",
+        # "--config_path configs/experiment_tqc_single_task_sparse.json --env_name PandaPickAndPlaceDense-v3",
+        # "--config_path configs/experiment_tqc_single_task_sparse.json --env_name PandaPickAndPlaceDense-v3 --learner_kwargs.use_retrospective_loss True",
         # "--config_path configs/experiment_tqc_single_task_dense.json --env_name PandaPushDense-v3",
         # "--config_path configs/experiment_tqc_single_task_dense.json --env_name PandaPickAndPlaceDense-v3",
         
         # "--config_path configs/experiment_tqc_single_task_sparse.json --env_name PandaPush-v3 --log sparse_env_termination",
         # "--config_path configs/experiment_tqc_single_task_sparse.json --env_name PandaPickAndPlace-v3 --log sparse_env_termination",
         
+        # Panda multi-reward stacking
+        # "--config_path configs/experiment_tqc_single_task_sparse.json --env_name PandaMultiRewardStackDense-v3",
+        # "--config_path configs/experiment_tqc_single_task_dense.json --env_name PandaMultiRewardStackDense-v3",
+        # "--config_path configs/experiment_tqc_random.json --env_name PandaMultiRewardStackDense-v3",
+        "--config_path configs/experiment_tqc_setter_solver.json --env_name PandaMultiRewardStackDense-v3 --learner_kwargs.scheduler_kwargs.success_threshold 80",
+        "--config_path configs/experiment_tqc_currot.json --env_name PandaMultiRewardStackDense-v3 --learner_kwargs.scheduler_kwargs.success_threshold 80"
+        
+        # Mutli-reward Pick-and-place with TQC
+        # "--config_path configs/experiment_tqc_random.json --env_name PandaMultiRewardPickAndPlaceDense-v3",
+        # "--config_path configs/experiment_tqc_manual_task.json --env_name PandaMultiRewardPickAndPlaceDense-v3",
+        # "--config_path configs/experiment_tqc_alpgmm.json --env_name PandaMultiRewardPickAndPlaceDense-v3"
+        # "--config_path configs/experiment_tqc_currot.json --env_name PandaMultiRewardPickAndPlaceDense-v3",
+        # "--config_path configs/experiment_tqc_setter_solver.json --env_name PandaMultiRewardPickAndPlaceDense-v3"
     ]
     
     command = "python train.py %s --seed %d"

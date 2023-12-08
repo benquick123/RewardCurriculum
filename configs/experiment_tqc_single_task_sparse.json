@@ -1,12 +1,11 @@
 {
     "template": "configs/templates/experiment_tqc.json",
-    "log": "sparse",
     "learner_kwargs": {
         "scheduler_class": "cl_algorithms.single_task.SingleTask",
         "reward_dim": 1
     },
     "environment": {
-        "wrappers": ["SparseRewardWrapper", "MainRewardWrapper"],
-        "wrapper_kwargs": [{"reward_threshold": -0.05}, {}]
+        "wrappers": ["SparseRewardWrapper", "SingleTaskRewardWrapper"],
+        "wrapper_kwargs": [{"reward_threshold": -0.05}, {"task_index": -1}]
     }
 }

@@ -7,7 +7,7 @@ import gymnasium as gym
 import numpy as np
 import panda_gym
 import stable_baselines3
-from gymnasium.core import ActType, ObsType
+from gymnasium.core import ActType, Env, ObsType
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv
 from stable_baselines3.common.vec_env.patch_gym import _patch_env
 
@@ -80,17 +80,29 @@ class AuxRewardWrapper(gym.RewardWrapper):
         return self.env.compute_reward(achieved_goal, desired_goal, infos).reshape(len(achieved_goal), -1)
 
 
-class MainRewardWrapper(gym.RewardWrapper):
+class PotentialRewardWrapper(gym.RewardWrapper):
+    
+    def __init__(self, env: Env):
+        self._previous_reward = None
+        super().__init__(env)
+        
+
+
+class SingleTaskRewardWrapper(gym.RewardWrapper):
+    
+    def __init__(self, env: Env, task_index=-1):
+        self.task_index = task_index
+        super().__init__(env)
     
     def reward(self, reward):
         # Only returns the last element from the rewards array, assuming that corresponds to the main reward.
         assert isinstance(reward, np.ndarray), f"Did not receive a numpy array. Got {reward}"
         assert len(reward.shape) == 1
         
-        return reward[-1]
+        return reward[self.task_index]
     
     def compute_reward(self, achieved_goal, desired_goal, infos):
-        return self.env.compute_reward(achieved_goal, desired_goal, infos).reshape(len(achieved_goal), -1)[:, -1:]
+        return np.expand_dims(self.env.compute_reward(achieved_goal, desired_goal, infos).reshape(len(achieved_goal), -1)[:, self.task_index], axis=-1)
         
 
 # dm_control environment wrappers

@@ -1,0 +1,12 @@
+{
+    "template": "configs/templates/experiment_tqc.json",
+    "learner_kwargs": {
+        "scheduler_class": "cl_algorithms.setter_solver.SetterSolver",
+        "scheduler_kwargs": {
+            "update_frequency": 200,
+            "update_weights_frequency": 5,
+            "success_threshold": 10,
+            "sampling_strategy": "past"
+        }
+    }
+}

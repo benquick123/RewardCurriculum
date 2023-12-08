@@ -1,5 +1,6 @@
 import json
 import numpy as np
+from argparse import Namespace
 import os
 from datetime import datetime
 import importlib
@@ -41,33 +42,57 @@ def load_config(path):
         return config_main
 
 
-def get_config(path, args, remaining_args):
-    config = load_config(path)
-    
+def update_config_from_cmd(config, remaining_args):
     # go through remaining args
     for i in range(0, len(remaining_args), 2):
         arg = remaining_args[i].replace("--", "").split(".")
-        value = remaining_args[i+1]
-        current = config
+        arg_value = str(remaining_args[i+1])
+        _current = config
+        # from pprint import pprint
+        # pprint(config)
         for _arg in arg[:-1]:            
             if _arg.isdigit():
                 _arg = int(_arg)
-                assert len(current) > _arg, "Provided index is out of range."
-            elif _arg not in current:
-                current[_arg] = dict()
+                assert len(_current) > _arg, "Provided index is out of range."
+            elif _arg not in _current:
+                _current[_arg] = dict()
                 
-            current = current[_arg]
+            _current = _current[_arg]
         
         # take care of some basic type conversions
         try:
-            value = eval(value)
+            arg_value = eval(arg_value)
         except:
-            print(f"Couldn't parse remaining arg `{remaining_args[i]}` ({value}). Will keep as str.")        
-        current[arg[-1]] = value
+            print(f"Couldn't parse remaining arg `{remaining_args[i]}` ({arg_value}). Will keep as str.")
+        
+        _current[arg[-1]] = arg_value
+    
+    return config
+
+
+def get_config(path, args, remaining_args):
+    prev_remaining_args = None
+    if args.continue_from is not None:
+        args.config_path = path = os.path.join(args.continue_from, "config_original.json")
+        prev_remaining_args = eval(open(os.path.join(args.continue_from, "remaining_args.txt"), "r").read())
+        
+        # parse previous args
+        # prev_args = open(os.path.join(args.continue_from, "args.txt"), "r").read()
+        # prev_args = prev_args.replace("Namespace(", "")[:-1].split(", ")
+        # prev_args = dict([arg.split("=") for arg in prev_args])
+        # prev_args = {k: eval(v) for k, v in prev_args.items()}
+        # prev_args = Namespace(**prev_args)
+        # assert prev_args.env_name == args.env_name, f"{prev_args.env_name} != {args.env_name}"
+    
+    config = load_config(path)
+        
+    if prev_remaining_args is not None:
+        config = update_config_from_cmd(config, remaining_args=prev_remaining_args)
+    config = update_config_from_cmd(config, remaining_args=remaining_args)
     
     # environment hyperparams
     config["environment"]["env_name"] = args.env_name
-    config["environment"]["n_envs"] = min(config["learner_kwargs"]["train_freq"][0], config["environment"].get("n_envs", float("inf")))        
+    config["environment"]["n_envs"] = min(config["learner_kwargs"]["train_freq"][0], config["environment"].get("n_envs", float("inf")))
 
     ##### seeds ####
     if args.seed is not None:
@@ -100,7 +125,7 @@ def get_config(path, args, remaining_args):
         config["log"] += "_" + experiment_id
         if len(remaining_args) > 0:
             # make a custom folder name based on cmd arguments; ignore --log since it is already part of the folder name.
-            config["log"] += "_" + "_".join([arg_name[2:].split(".")[-1] + "=" + value for arg_name, value in zip(remaining_args[0::2], remaining_args[1::2]) if arg_name[2:] != "log"])
+            config["log"] += "_" + "_".join([arg_name[2:].split(".")[-1] + "=" + value for arg_name, value in zip(remaining_args[0::2], remaining_args[1::2]) if not arg_name[2:].startswith("log")])
         
         config["tb_log_name"] = experiment_id
         config["learner_kwargs"]["tensorboard_log"] = os.path.join(config["log_path"], config["log"], "tb")
@@ -135,8 +160,8 @@ def get_config(path, args, remaining_args):
         spec.loader.exec_module(module)
         config["learner_kwargs"]["scheduler_class"] = module.__dict__[module_split[-1]]
         
-    config["learner_kwargs"]["scheduler_kwargs"]["update_frequency"] = min(config["learner_kwargs"]["train_freq"][0], 
-                                                                           config["learner_kwargs"]["scheduler_kwargs"].get("update_frequency", float("inf")))
+    # config["learner_kwargs"]["scheduler_kwargs"]["update_frequency"] = min(config["learner_kwargs"]["train_freq"][0], 
+    #                                                                        config["learner_kwargs"]["scheduler_kwargs"].get("update_frequency", float("inf")))
         
     # if "scheduler_kwargs" not in config["learner_kwargs"]:
     #     config["learner_kwargs"]["scheduler_kwargs"] = dict()

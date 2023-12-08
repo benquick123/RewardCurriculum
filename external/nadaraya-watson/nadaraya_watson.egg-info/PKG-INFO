@@ -1,0 +1,7 @@
+Metadata-Version: 2.1
+Name: nadaraya-watson
+Version: 0.0.1
+Summary: A Nadaraya-Watson smoother implemented in C++ using the Python Buffer Protocol
+Author: Pascal Klink
+Author-email: pascal.klink@googlemail.com
+Requires-Python: >=3.6

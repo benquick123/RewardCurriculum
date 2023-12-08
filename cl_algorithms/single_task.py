@@ -6,7 +6,6 @@ from cl_algorithms.scheduler import Scheduler
 class SingleTask(Scheduler):
     
     def __init__(self, reward_dim, seed=None, tau=20, update_frequency=20, **kwargs):
-        self.current_weights = None
         super(SingleTask, self).__init__(reward_dim=reward_dim, tau=tau, seed=seed, update_frequency=update_frequency)
         
     def sample(self):
@@ -19,8 +18,7 @@ class SingleTask(Scheduler):
         weight_batch = np.repeat(weight_batch, batch_size, axis=0)
         return weight_batch
     
-    def init_period(self):
-        self.sample()
-    
     def maybe_update(self, **kwargs):
         return False
+
+

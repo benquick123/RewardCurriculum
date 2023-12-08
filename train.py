@@ -43,6 +43,7 @@ if __name__ == "__main__":
         wrappers = []
         if "SparseRewardWrapper" in config["environment"]["wrappers"]:
             wrappers += ["SparseRewardWrapper"]
+        wrappers += ["SingleTaskRewardWrapper"]
         
         wrapper_kwargs = []
         for i in range(len(wrappers)):
@@ -54,8 +55,24 @@ if __name__ == "__main__":
         from utils.callbacks import EvalCallback
         eval_env = make_vec_env(make_env_fn, n_envs=1, env_kwargs={"wrappers": wrappers, "wrapper_kwargs": wrapper_kwargs, "ignore_keyword": None}, seed=config["seed"], vec_env_cls=SubprocVecEnv)
         callback = [EvalCallback(eval_env=eval_env, warn=False, **config["eval_kwargs"]), callback]
-    
+
     learner = config["learner_class"]("MultiInputPolicy", env, **config["learner_kwargs"])
-    learner.learn(callback=callback, **config["train_kwargs"])
-    learner.save(os.path.join(config["log_path"], config["log"], "final.zip"))
+    if args.continue_from is not None:
+        if args.continue_mode == "final":
+            param_load_path = os.path.join(args.continue_from, "final.zip")
+        elif args.continue_from == "best":
+            param_load_path = os.path.join(args.continue_from, "evaluations", "best_model.zip")
+        
+        # learner.set_parameters(param_load_path)
+        learner.load_replay_buffer(os.path.join(args.continue_from, "replay_buffer.pkl"))
+        learner.replay_buffer.set_scheduler(learner.scheduler)
+    
+    try:
+        learner.learn(callback=callback, **config["train_kwargs"])
+    except KeyboardInterrupt:
+        print("Keyboard interrupt.")
+    finally:
+        if config["log"]:
+            learner.save(os.path.join(config["log_path"], config["log"], "final.zip"))
+            learner.save_replay_buffer(os.path.join(config["log_path"], config["log"], "replay_buffer.pkl"))
     

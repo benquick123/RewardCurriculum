@@ -1,0 +1,1 @@
+/usr/bin/c++ -fPIC  -fopenmp -O3 -DNDEBUG -flto -shared  -o /home/benjamin/RewardCurriculum/external/nadaraya-watson/build/lib.linux-x86_64-cpython-310/nadaraya_watson.cpython-310-x86_64-linux-gnu.so CMakeFiles/nadaraya_watson.dir/interface.cpp.o  /usr/lib/gcc/x86_64-linux-gnu/11/libgomp.so /usr/lib/x86_64-linux-gnu/libpthread.a 

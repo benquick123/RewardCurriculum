@@ -14,7 +14,7 @@ class Scheduler:
         raise NotImplementedError
     
     def init_period(self):
-        raise NotImplementedError
+        self.sample()
     
     def end_period(self):
         raise NotImplementedError

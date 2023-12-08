@@ -1,5 +1,6 @@
 {
     "template": "configs/templates/experiment_sac.json",
+    "log": "random",
     "learner_kwargs": {
         "scheduler_class": "cl_algorithms.random.Random"
     }

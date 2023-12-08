@@ -21,7 +21,7 @@ def save_self(config_path, args, remaining_args, config):
             if any([ignore_string in file for ignore_string in ignore]):
                 continue
             os.makedirs(os.path.join(path, "code", root), exist_ok=True)
-            os.system("cp %s %s" % (os.path.join(root, file), os.path.join(path, "code", root, file)))
+            os.system("cp '%s' '%s'" % (os.path.join(root, file), os.path.join(path, "code", root, file)))
         # print(root, dirs, files)
 
     def check_recursive(dictionary):
@@ -42,11 +42,11 @@ def save_self(config_path, args, remaining_args, config):
         return dictionary
     
     config_dict = check_recursive(copy.deepcopy(config))
-    json.dump(config_dict, open(os.path.join(path, "config.json"), "w"), indent=4)
+    json.dump(config_dict, open(os.path.join(path, "config.json"), "w"), indent=4, sort_keys=True)
     
     # save the original config
     original_config = load_config(config_path)
-    json.dump(original_config, open(os.path.join(path, "config_original.json"), "w"), indent=4)
+    json.dump(original_config, open(os.path.join(path, "config_original.json"), "w"), indent=4, sort_keys=True)
     
     with open(os.path.join(path, "args.txt"), "w") as f:
         f.write(str(args))

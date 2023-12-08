@@ -2,6 +2,6 @@
     "template": ["configs/experiment_tqc_single_task_sparse.json", "configs/templates/experiment_tqc.json"],
     "log": "dense",
     "environment": {
-        "wrapper_kwargs": [{"ignore": true, "reward_threshold": -0.05}, {}]
+        "wrapper_kwargs": [{"ignore": true, "reward_threshold": -0.05}, {"task_index": -1}]
     }
 }

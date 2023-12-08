@@ -1,5 +1,6 @@
 {
     "template": "configs/templates/experiment_sac.json",
+    "log": "spdl",
     "log_path": "results/spdl_test",
     "learner_kwargs": {
         "train_freq": [1, "episode"],

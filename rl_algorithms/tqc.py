@@ -31,14 +31,15 @@ class TQC(sb3_contrib.TQC):
     }
     policy: TQCPolicy
     
-    def __init__(self, policy, env, reward_dim=1, scheduler_class=SingleTask, scheduler_kwargs={}, use_retrospective_loss=False, **kwargs):
-        
+    def __init__(self, policy, env, use_uvfa=True, reward_dim=1, scheduler_class=SingleTask, scheduler_kwargs={}, use_retrospective_loss=False, **kwargs):
+        self.use_uvfa = use_uvfa
         self.scheduler = scheduler_class(reward_dim=reward_dim, **scheduler_kwargs)
         kwargs["replay_buffer_class"] = HerReplayBuffer
         if "replay_buffer_kwargs" not in kwargs:
             kwargs["replay_buffer_kwargs"] = dict()
         # kwargs["replay_buffer_kwargs"]["reward_dim"] = reward_dim
         kwargs["replay_buffer_kwargs"]["scheduler"] = self.scheduler
+        kwargs["replay_buffer_kwargs"]["use_uvfa"] = use_uvfa
         
         self.use_retrospective_loss = use_retrospective_loss
         super().__init__(policy, env, **kwargs)
@@ -50,10 +51,13 @@ class TQC(sb3_contrib.TQC):
         del self.policy
         
         if isinstance(self.env.observation_space, spaces.Box):
-            observation_space = spaces.Box(-np.inf, np.inf, shape=(self.env.observation_space.shape[0] + self.scheduler.reward_dim, ), dtype=np.float32)
+            observation_size = self.env.observation_space.shape[0] + self.scheduler.reward_dim * self.use_uvfa
+            
+            observation_space = spaces.Box(-np.inf, np.inf, shape=(observation_size, ), dtype=np.float32)
         elif isinstance(self.env.observation_space, spaces.Dict):
             observation_space = deepcopy(self.env.observation_space)
-            observation_space["observation"] = spaces.Box(-np.inf, np.inf, shape=(self.env.observation_space["observation"].shape[0] + self.scheduler.reward_dim, ), dtype=np.float32)
+            observation_size = self.env.observation_space["observation"].shape[0] + self.scheduler.reward_dim * self.use_uvfa
+            observation_space["observation"] = spaces.Box(-np.inf, np.inf, shape=(observation_size, ), dtype=np.float32)
         
         self.policy = self.policy_class(  # pytype:disable=not-instantiable
             observation_space,
@@ -234,7 +238,7 @@ class TQC(sb3_contrib.TQC):
             next_obs,
             buffer_action,
             reward_,
-            self.scheduler.current_weights,
+            self.scheduler.get_current_weights(),
             dones,
             infos,
         )
@@ -304,18 +308,19 @@ class TQC(sb3_contrib.TQC):
         observation_dim = observation.shape[-1] if isinstance(self.observation_space, spaces.Box) else self.observation_space["observation"].shape[-1]
         expected_observation_dim = self.observation_space.shape[0] if isinstance(self.observation_space, spaces.Box) else self.observation_space["observation"].shape[0]
         
-        if task is None:
-            assert observation_dim == (expected_observation_dim + self.scheduler.reward_dim), "Provide task or concatenate task with observation manually."
-        else:
-            assert observation_dim == expected_observation_dim, "When task is given, the observation shape must match the observation space."
-            task = task.reshape((-1, self.scheduler.reward_dim))
-            if len(task) != len(observation):
-                batch_size = observation.shape[0] if isinstance(observation, spaces.Box) else observation["observation"].shape[0]
-                task = np.repeat(task, batch_size, axis=0)
-                
-            if isinstance(observation, spaces.Box):
-                observation = np.concatenate((observation, task), axis=-1)
+        if self.use_uvfa:
+            if task is None:
+                assert observation_dim == (expected_observation_dim + self.scheduler.reward_dim), "Provide task or concatenate task with observation manually."
             else:
-                observation["observation"] = np.concatenate((observation["observation"], task), axis=-1)
+                assert observation_dim == expected_observation_dim, "When task is given, the observation shape must match the observation space."
+                task = task.reshape((-1, self.scheduler.reward_dim))
+                if len(task) != len(observation):
+                    batch_size = observation.shape[0] if isinstance(observation, spaces.Box) else observation["observation"].shape[0]
+                    task = np.repeat(task, batch_size, axis=0)
+                    
+                if isinstance(observation, spaces.Box):
+                    observation = np.concatenate((observation, task), axis=-1)
+                else:
+                    observation["observation"] = np.concatenate((observation["observation"], task), axis=-1)
             
         return self.policy.predict(observation, **kwargs)
