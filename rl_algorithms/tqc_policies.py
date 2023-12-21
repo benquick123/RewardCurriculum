@@ -1,18 +1,17 @@
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
+import numpy as np
 import torch as th
 from gymnasium import spaces
-from stable_baselines3.common.distributions import SquashedDiagGaussianDistribution, StateDependentNoiseDistribution
+from stable_baselines3.common.distributions import (
+    SquashedDiagGaussianDistribution, StateDependentNoiseDistribution)
 from stable_baselines3.common.policies import BaseModel, BasePolicy
 from stable_baselines3.common.preprocessing import get_action_dim
-from stable_baselines3.common.torch_layers import (
-    BaseFeaturesExtractor,
-    CombinedExtractor,
-    FlattenExtractor,
-    NatureCNN,
-    create_mlp,
-    get_actor_critic_arch,
-)
+from stable_baselines3.common.torch_layers import (BaseFeaturesExtractor,
+                                                   CombinedExtractor,
+                                                   FlattenExtractor, NatureCNN,
+                                                   create_mlp,
+                                                   get_actor_critic_arch)
 from stable_baselines3.common.type_aliases import Schedule
 from torch import nn as nn
 
@@ -294,7 +293,7 @@ class TQCPolicy(BasePolicy):
         n_quantiles: int = 25,
         n_critics: int = 2,
         use_retrospective_loss: bool = False,
-        share_features_extractor: bool = False,
+        share_features_extractor: bool = False
     ):
         super().__init__(
             observation_space,

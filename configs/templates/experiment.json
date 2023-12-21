@@ -4,7 +4,7 @@
         "eval_freq": 5000
     },
     "train_kwargs": {
-        "total_timesteps": 3000000,
+        "total_timesteps": 2000000,
         "progress_bar": true,
         "log_interval": 20
     },

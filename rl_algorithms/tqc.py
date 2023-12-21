@@ -18,6 +18,7 @@ from cl_algorithms.single_task import SingleTask
 from rl_algorithms.replay_buffer import HerReplayBuffer, ReplayBuffer
 from rl_algorithms.tqc_policies import (CnnPolicy, MlpPolicy, MultiInputPolicy,
                                         TQCPolicy)
+from rl_algorithms.tqc_selector_policies import SelectorMlpPolicy, MultiInputSelectorPolicy
 from utils.callbacks import ProgressBarCallback
 from utils.retrospective_loss import retrospective_loss_fn
 
@@ -26,8 +27,10 @@ class TQC(sb3_contrib.TQC):
     
     policy_aliases: ClassVar[Dict[str, Type[BasePolicy]]] = {
         "MlpPolicy": MlpPolicy,
+        "SelectorMlpPolicy": SelectorMlpPolicy,
         "CnnPolicy": CnnPolicy,
         "MultiInputPolicy": MultiInputPolicy,
+        "MultiInputSelectorPolicy": MultiInputSelectorPolicy,
     }
     policy: TQCPolicy
     
@@ -46,30 +49,7 @@ class TQC(sb3_contrib.TQC):
         
     def _setup_model(self) -> None:
         super()._setup_model()
-        
-        self.policy = self.policy.to("cpu")
-        del self.policy
-        
-        if isinstance(self.env.observation_space, spaces.Box):
-            observation_size = self.env.observation_space.shape[0] + self.scheduler.reward_dim * self.use_uvfa
-            
-            observation_space = spaces.Box(-np.inf, np.inf, shape=(observation_size, ), dtype=np.float32)
-        elif isinstance(self.env.observation_space, spaces.Dict):
-            observation_space = deepcopy(self.env.observation_space)
-            observation_size = self.env.observation_space["observation"].shape[0] + self.scheduler.reward_dim * self.use_uvfa
-            observation_space["observation"] = spaces.Box(-np.inf, np.inf, shape=(observation_size, ), dtype=np.float32)
-        
-        self.policy = self.policy_class(  # pytype:disable=not-instantiable
-            observation_space,
-            self.action_space,
-            self.lr_schedule,
-            use_retrospective_loss=self.use_retrospective_loss,
-            **self.policy_kwargs,  # pytype:disable=not-instantiable
-        )
-        self.policy = self.policy.to(self.device)
-        
-        self._create_aliases()
-        
+                
         if self.use_retrospective_loss:
             self.critic_retro = self.policy.critic_retro
             
@@ -214,6 +194,7 @@ class TQC(sb3_contrib.TQC):
             self._last_original_obs, new_obs_, reward_ = self._last_obs, new_obs, reward
 
         # Avoid modification by reference
+        obs = deepcopy(self._last_original_obs)
         next_obs = deepcopy(new_obs_)
         # As the VecEnv resets automatically, new_obs is already the
         # first observation of the next episode
@@ -232,13 +213,14 @@ class TQC(sb3_contrib.TQC):
                     # VecNormalize normalizes the terminal observation
                     if self._vec_normalize_env is not None:
                         next_obs[i] = self._vec_normalize_env.unnormalize_obs(next_obs[i, :])
+                        
+        obs["weights"] = self.scheduler.get_current_weights()
 
         replay_buffer.add(
-            self._last_original_obs,
+            obs,
             next_obs,
             buffer_action,
             reward_,
-            self.scheduler.get_current_weights(),
             dones,
             infos,
         )
@@ -261,8 +243,8 @@ class TQC(sb3_contrib.TQC):
         else:
             # Note: when using continuous actions,
             # we assume that the policy uses tanh to scale the action
-            # We use non-deterministic action in the case of SAC, for TD3, it does not matter        
-            unscaled_action, _ = self.predict(deepcopy(self._last_obs), task=self.scheduler.get_current_weights(), deterministic=False)
+            # We use non-deterministic action in the case of SAC, for TD3, it does not matter
+            unscaled_action, _ = self.predict(deepcopy(self._last_obs), weights=self.scheduler.get_current_weights(), deterministic=False)
 
         # Rescale the action from [low, high] to [-1, 1]
         if isinstance(self.action_space, spaces.Box):
@@ -304,23 +286,16 @@ class TQC(sb3_contrib.TQC):
             
         return total_timesteps, callback
     
-    def predict(self, observation: np.ndarray, task: np.ndarray = None, **kwargs) -> Tuple[np.ndarray, Optional[Tuple[np.ndarray, ...]]]:
-        observation_dim = observation.shape[-1] if isinstance(self.observation_space, spaces.Box) else self.observation_space["observation"].shape[-1]
-        expected_observation_dim = self.observation_space.shape[0] if isinstance(self.observation_space, spaces.Box) else self.observation_space["observation"].shape[0]
-        
+    def predict(self, observation: np.ndarray, weights: np.ndarray = None, **kwargs) -> Tuple[np.ndarray, Optional[Tuple[np.ndarray, ...]]]:
         if self.use_uvfa:
-            if task is None:
-                assert observation_dim == (expected_observation_dim + self.scheduler.reward_dim), "Provide task or concatenate task with observation manually."
+            weights = weights.reshape((-1, self.scheduler.reward_dim))
+            if len(weights) != len(observation):
+                batch_size = observation.shape[0] if isinstance(observation, spaces.Box) else observation["observation"].shape[0]
+                weights = np.repeat(weights, batch_size, axis=0)
+                
+            if isinstance(observation, spaces.Box):
+                observation = np.concatenate((observation, weights), axis=-1)
             else:
-                assert observation_dim == expected_observation_dim, "When task is given, the observation shape must match the observation space."
-                task = task.reshape((-1, self.scheduler.reward_dim))
-                if len(task) != len(observation):
-                    batch_size = observation.shape[0] if isinstance(observation, spaces.Box) else observation["observation"].shape[0]
-                    task = np.repeat(task, batch_size, axis=0)
-                    
-                if isinstance(observation, spaces.Box):
-                    observation = np.concatenate((observation, task), axis=-1)
-                else:
-                    observation["observation"] = np.concatenate((observation["observation"], task), axis=-1)
+                observation["weights"] = weights
             
         return self.policy.predict(observation, **kwargs)

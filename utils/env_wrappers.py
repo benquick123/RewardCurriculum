@@ -87,7 +87,6 @@ class PotentialRewardWrapper(gym.RewardWrapper):
         super().__init__(env)
         
 
-
 class SingleTaskRewardWrapper(gym.RewardWrapper):
     
     def __init__(self, env: Env, task_index=-1):

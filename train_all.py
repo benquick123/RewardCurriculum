@@ -122,15 +122,15 @@ if __name__ == "__main__":
         # "--config_path configs/experiment_tqc_single_task_sparse.json --env_name PandaMultiRewardStackDense-v3",
         # "--config_path configs/experiment_tqc_single_task_dense.json --env_name PandaMultiRewardStackDense-v3",
         # "--config_path configs/experiment_tqc_random.json --env_name PandaMultiRewardStackDense-v3",
-        "--config_path configs/experiment_tqc_setter_solver.json --env_name PandaMultiRewardStackDense-v3 --learner_kwargs.scheduler_kwargs.success_threshold 80",
-        "--config_path configs/experiment_tqc_currot.json --env_name PandaMultiRewardStackDense-v3 --learner_kwargs.scheduler_kwargs.success_threshold 80"
+        # "--config_path configs/experiment_tqc_setter_solver.json --env_name PandaMultiRewardStackDense-v3",
+        # "--config_path configs/experiment_tqc_currot.json --env_name PandaMultiRewardStackDense-v3"
         
         # Mutli-reward Pick-and-place with TQC
         # "--config_path configs/experiment_tqc_random.json --env_name PandaMultiRewardPickAndPlaceDense-v3",
-        # "--config_path configs/experiment_tqc_manual_task.json --env_name PandaMultiRewardPickAndPlaceDense-v3",
+        "--config_path configs/experiment_tqc_manual_task.json --env_name PandaMultiRewardPickAndPlaceDense-v3 --log state_bug_fix_test",
         # "--config_path configs/experiment_tqc_alpgmm.json --env_name PandaMultiRewardPickAndPlaceDense-v3"
-        # "--config_path configs/experiment_tqc_currot.json --env_name PandaMultiRewardPickAndPlaceDense-v3",
-        # "--config_path configs/experiment_tqc_setter_solver.json --env_name PandaMultiRewardPickAndPlaceDense-v3"
+        # "--config_path configs/experiment_tqc_currot.json --env_name PandaMultiRewardPickAndPlaceDense-v3 --log state_bug_fix_test",
+        # "--config_path configs/experiment_tqc_setter_solver.json --env_name PandaMultiRewardPickAndPlaceDense-v3 --log state_bug_fix_test"
     ]
     
     command = "python train.py %s --seed %d"

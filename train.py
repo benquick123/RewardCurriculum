@@ -56,7 +56,7 @@ if __name__ == "__main__":
         eval_env = make_vec_env(make_env_fn, n_envs=1, env_kwargs={"wrappers": wrappers, "wrapper_kwargs": wrapper_kwargs, "ignore_keyword": None}, seed=config["seed"], vec_env_cls=SubprocVecEnv)
         callback = [EvalCallback(eval_env=eval_env, warn=False, **config["eval_kwargs"]), callback]
 
-    learner = config["learner_class"]("MultiInputPolicy", env, **config["learner_kwargs"])
+    learner = config["learner_class"]("MultiInputSelectorPolicy", env, **config["learner_kwargs"])
     if args.continue_from is not None:
         if args.continue_mode == "final":
             param_load_path = os.path.join(args.continue_from, "final.zip")

@@ -14,7 +14,7 @@ from stable_baselines3.common.vec_env import (DummyVecEnv, VecEnv, VecMonitor,
 def evaluate_policy(
     model: "type_aliases.PolicyPredictor",
     env: Union[gym.Env, VecEnv],
-    task: np.ndarray = None,
+    weights: np.ndarray = None,
     n_eval_episodes: int = 10,
     deterministic: bool = True,
     render: bool = False,
@@ -56,7 +56,7 @@ def evaluate_policy(
     while (episode_counts < episode_count_targets).any():
         actions, states = model.predict(
             observations,  # type: ignore[arg-type]
-            task=task,
+            weights=weights,
             state=states,
             episode_start=episode_starts,
             deterministic=deterministic,
@@ -111,18 +111,18 @@ def evaluate_policy(
 
 class EvalCallback(stable_baselines3.common.callbacks.EvalCallback):
     
-    def __init__(self, eval_env: Union[gym.Env, VecEnv], callback_on_new_best: Optional[BaseCallback] = None, callback_after_eval: Optional[BaseCallback] = None, n_eval_episodes: int = 5, eval_freq: int = 10000, log_path: Optional[str] = None, best_model_save_path: Optional[str] = None, deterministic: bool = True, render: bool = False, verbose: int = 1, warn: bool = True, task=None):
+    def __init__(self, eval_env: Union[gym.Env, VecEnv], callback_on_new_best: Optional[BaseCallback] = None, callback_after_eval: Optional[BaseCallback] = None, n_eval_episodes: int = 5, eval_freq: int = 10000, log_path: Optional[str] = None, best_model_save_path: Optional[str] = None, deterministic: bool = True, render: bool = False, verbose: int = 1, warn: bool = True, weights=None):
         super().__init__(eval_env, callback_on_new_best, callback_after_eval, n_eval_episodes, eval_freq, log_path, best_model_save_path, deterministic, render, verbose, warn)
-        self.task = task
+        self.weights = weights
 
     def _init_callback(self) -> None:
         super()._init_callback()
-        if self.task is None:
-            task = np.zeros(self.model.scheduler.reward_dim)
-            task[-1] = 1
+        if self.weights is None:
+            weights = np.zeros(self.model.scheduler.reward_dim)
+            weights[-1] = 1
         else:
-            task = np.array(self.task)
-        self.task = task
+            weights = np.array(self.weights)
+        self.weights = weights
         
     def _on_step(self) -> bool:
         continue_training = True
@@ -145,7 +145,7 @@ class EvalCallback(stable_baselines3.common.callbacks.EvalCallback):
             episode_rewards, episode_lengths = evaluate_policy(
                 self.model,
                 self.eval_env,
-                task=self.task,
+                weights=self.weights,
                 n_eval_episodes=self.n_eval_episodes,
                 render=self.render,
                 deterministic=self.deterministic,

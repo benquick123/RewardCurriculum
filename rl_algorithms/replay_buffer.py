@@ -105,7 +105,6 @@ class HerReplayBuffer(stable_baselines3.her.HerReplayBuffer):
         self.use_uvfa = use_uvfa
         self.reward_dim = self.scheduler.reward_dim
         self.rewards = np.zeros((self.buffer_size, self.n_envs, self.reward_dim), dtype=np.float32)
-        self.reward_weights = np.zeros((self.buffer_size, self.n_envs, self.reward_dim), dtype=np.float32)
         self.cumulative_rewards = np.zeros((self.buffer_size, self.n_envs, self.reward_dim), dtype=np.float32)
         
         self.has_diversity_changed = True
@@ -119,15 +118,10 @@ class HerReplayBuffer(stable_baselines3.her.HerReplayBuffer):
         next_obs: TensorDict,
         action: np.ndarray,
         reward: np.ndarray,
-        reward_weights: np.ndarray,
         done: np.ndarray,
         infos: List[Dict[str, Any]],
     ) -> None:
-        if len(reward_weights.shape) == 1:
-            reward_weights = reward_weights.reshape(1, -1)
-            reward_weights = np.repeat(reward_weights, repeats=self.n_envs, axis=0)
         
-        self.reward_weights[self.pos] = reward_weights
         super().add(obs, next_obs, action, reward, done, infos)
         
         # When episode ends, compute the discounted rewards for each of the objecties
@@ -316,8 +310,8 @@ class HerReplayBuffer(stable_baselines3.her.HerReplayBuffer):
         rewards = rewards.reshape(-1, 1)
         
         if self.use_uvfa:
-            obs_["observation"] = np.concatenate((obs_["observation"], reward_weights), axis=-1)
-            next_obs_["observation"] = np.concatenate((next_obs_["observation"], reward_weights), axis=-1)
+            obs_["weights"] = reward_weights
+            next_obs_["weights"] = reward_weights
 
         # Convert to torch tensor
         observations = {key: self.to_torch(obs) for key, obs in obs_.items()}
@@ -387,8 +381,8 @@ class HerReplayBuffer(stable_baselines3.her.HerReplayBuffer):
         rewards = rewards.reshape(-1, 1)
 
         if self.use_uvfa:
-            obs["observation"] = np.concatenate((obs["observation"], reward_weights), axis=-1)
-            next_obs["observation"] = np.concatenate((next_obs["observation"], reward_weights), axis=-1)
+            obs["weights"] = reward_weights
+            next_obs["weights"] = reward_weights
         
         obs = self._normalize_obs(obs, env)
         next_obs = self._normalize_obs(next_obs, env)

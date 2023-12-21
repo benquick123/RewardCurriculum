@@ -409,7 +409,6 @@ class SetterSolver(Scheduler):
         
         # feasibility:
         if self.has_judge_been_trained:
-            feasibility_logits = th.log(feasibilities / (1 - feasibilities))
             predicted_feasibility_logits = self.judge(predicted_weights)
             feasibility_loss = self.feasibility_loss_fn(F.sigmoid(predicted_feasibility_logits), feasibilities)
             self.has_judge_been_trained = False
@@ -420,7 +419,10 @@ class SetterSolver(Scheduler):
         coverage_loss = predicted_log_p.mean()
         
         # desired distribution
-        desired_loss = self.goal_discriminator(predicted_weights).mean()
+        if self.goal_discriminator_weight > 0:
+            desired_loss = self.goal_discriminator(predicted_weights).mean()
+        else:
+            desired_loss = 0
         
         loss = validity_loss + feasibility_loss + coverage_loss + self.goal_discriminator_weight * desired_loss
         loss.backward()
