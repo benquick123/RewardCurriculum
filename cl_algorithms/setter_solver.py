@@ -236,7 +236,7 @@ class SetterSolver(Scheduler):
                  goal_discriminator_weight=5):
         super(SetterSolver, self).__init__(reward_dim, tau=tau, seed=seed, update_frequency=update_frequency)
         
-        assert sampling_strategy in {"past", "random"}
+        assert sampling_strategy in {"past", "current", "random"}
         self.sampling_strategy = sampling_strategy
         
         self.success_threshold = success_threshold
@@ -449,7 +449,12 @@ class SetterSolver(Scheduler):
             sample_idxs = self.rng.integers(low=0, high=len(self.all_weights_history), size=batch_size)
             weight_batch = np.array([self.all_weights_history[idx] for idx in sample_idxs])
             return weight_batch
-        else:
+        elif self.sampling_strategy == "current":
             feasibilities = th.tensor(self.rng.random(size=(batch_size, 1)), dtype=th.float)
             zs = th.tensor(self.rng.normal(0, 1, size=(batch_size, self.reward_dim)), dtype=th.float)
             return self.setter(zs, condition=feasibilities)[0].detach().numpy()
+        else:
+            weight_batch = self.rng.random((batch_size, self.reward_dim))
+            return weight_batch
+            
+        

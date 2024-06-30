@@ -11,6 +11,34 @@ from gymnasium.core import ActType, Env, ObsType
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv
 from stable_baselines3.common.vec_env.patch_gym import _patch_env
 
+class DictObservationWrapper(gym.Wrapper):
+    
+    def __init__(self, env: Env, observation_keys: list[str] = [], observation_dims: list[tuple] = []):
+        super().__init__(env)
+        
+        self.observation_keys = observation_keys
+        self.observations_dims = observation_dims
+        
+        observation_space = {"observation": self.env.observation_space}
+        for key, dim in zip(self.observation_keys, self.observations_dims):
+            observation_space[key] = gym.spaces.Box(low=-np.inf, high=np.inf, shape=dim, dtype=np.float32)
+        self.observation_space = gym.spaces.Dict(observation_space)
+        
+    def reset(self, **kwargs):
+        observation, reset_info = self.env.reset(**kwargs)
+        return self.observation(observation), reset_info
+    
+    def step(self, action: Any) -> tuple[Any, SupportsFloat, bool, bool, dict[str, Any]]:
+        observation, reward, terminated, truncated, info = self.env.step(action)
+        return self.observation(observation), reward, terminated, truncated, info
+    
+    def observation(self, observation):
+        
+        observation = {"observation": observation}
+        for key, dim in zip(self.observation_keys, self.observations_dims):
+            observation[key] = np.zeros(dim) * np.nan
+        return observation
+
 
 class SparseRewardWrapper(gym.RewardWrapper):
     
@@ -71,9 +99,9 @@ class AuxRewardWrapper(gym.RewardWrapper):
     
     def step(self, action: Any) -> tuple[Any, SupportsFloat, bool, bool, dict[str, Any]]:
         observation, reward, terminated, truncated, info = self.env.step(action)
-        return observation, self.reward(reward, observation, action), terminated, truncated, info
+        return observation, self.reward(reward, observation, action, info), terminated, truncated, info
     
-    def reward(self, reward, observation, action):
+    def reward(self, reward, observation, action, info=None):
         return np.array([reward], dtype=float)
     
     def compute_reward(self, achieved_goal, desired_goal, infos):
@@ -103,6 +131,74 @@ class SingleTaskRewardWrapper(gym.RewardWrapper):
     def compute_reward(self, achieved_goal, desired_goal, infos):
         return np.expand_dims(self.env.compute_reward(achieved_goal, desired_goal, infos).reshape(len(achieved_goal), -1)[:, self.task_index], axis=-1)
         
+
+
+# gymnasium environment wrappers
+class AntAuxRewardWrapper(AuxRewardWrapper):
+    
+    def __init__(self, env):
+        super(AntAuxRewardWrapper, self).__init__(env)
+        self.prev_observation = None
+        
+    def reward(self, reward, observation, action, info):
+        return np.array([
+            info["reward_survive"],
+            info["reward_forward"],
+            info["reward_ctrl"],
+            reward
+        ])
+    
+
+class HalfCheetahAuxRewardWrapper(AuxRewardWrapper):
+    
+    def __init__(self, env):
+        super(HalfCheetahAuxRewardWrapper, self).__init__(env)
+        self.prev_observation = None
+        
+    def reward(self, reward, observation, action, info):
+        return reward
+
+
+class HopperAuxRewardWrapper(AuxRewardWrapper):
+    
+    def __init__(self, env):
+        super(HopperAuxRewardWrapper, self).__init__(env)
+        self.prev_observation = None
+        
+    def reward(self, reward, observation, action, info):
+        return reward
+    
+
+class HumanoidAuxRewardWrapper(AuxRewardWrapper):
+    
+    def __init__(self, env):
+        super(HumanoidAuxRewardWrapper, self).__init__(env)
+        self.prev_observation = None
+        
+    def reward(self, reward, observation, action, info):
+        return reward
+    
+    
+class SwimmerAuxRewardWrapper(AuxRewardWrapper):
+    
+    def __init__(self, env):
+        super(SwimmerAuxRewardWrapper, self).__init__(env)
+        self.prev_observation = None
+        
+    def reward(self, reward, observation, action, info):
+        return reward
+
+
+class WalkerAuxRewardWrapper(AuxRewardWrapper):
+    
+    def __init__(self, env):
+        super(WalkerAuxRewardWrapper, self).__init__(env)
+        self.prev_observation = None
+        
+    def reward(self, reward, observation, action, info):
+        return reward
+
+
 
 # dm_control environment wrappers
 
@@ -231,7 +327,8 @@ class FishAuxRewardWrapper(AuxRewardWrapper):
             reward
         ], dtype=float)
     
-    
+
+"""
 class HopperAuxRewardWrapper(AuxRewardWrapper):
     
     def reward(self, reward, observation, action):
@@ -253,8 +350,10 @@ class HopperAuxRewardWrapper(AuxRewardWrapper):
             are_same and np.sign(np.sign(observation["velocity"][4])) == -1,
             reward
         ], dtype=float)
-    
-    
+""" 
+
+
+"""
 class HumanoidAuxRewardWrapper(AuxRewardWrapper):
     
     def reward(self, reward, observation, action):
@@ -271,8 +370,9 @@ class HumanoidAuxRewardWrapper(AuxRewardWrapper):
             np.sum(np.abs(observation["velocity"])) > len(observation["velocity"]),
             reward
         ], dtype=float)
-        
-    
+"""
+
+
 class ManipulatorAuxRewardWrapper(AuxRewardWrapper):
     
     def reward(self, reward, observation, action):
@@ -353,6 +453,7 @@ class ReacherAuxRewardWrapper(AuxRewardWrapper):
         ], dtype=float)
     
     
+"""
 class SwimmerAuxRewardWrapper(AuxRewardWrapper):
     
     def reward(self, reward, observation, action):
@@ -370,8 +471,10 @@ class SwimmerAuxRewardWrapper(AuxRewardWrapper):
             observation["body_velocities"][1] < 0,
             reward
         ], dtype=float)
-    
-    
+"""    
+   
+
+"""  
 class WalkerAuxRewardWrapper(AuxRewardWrapper):
     
     def reward(self, reward, observation, action):
@@ -398,6 +501,7 @@ class WalkerAuxRewardWrapper(AuxRewardWrapper):
             are_same,
             reward
         ], dtype=float)
+"""
     
 
 # gym environment wrappers

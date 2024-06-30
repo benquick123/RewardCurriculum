@@ -14,8 +14,62 @@ from stable_baselines3.common.torch_layers import (BaseFeaturesExtractor,
                                                    create_mlp)
 from stable_baselines3.common.type_aliases import Schedule
 from torch import nn as nn
+from torch.distributions import Categorical
 
 from rl_algorithms.tqc_policies import Actor, Critic, TQCPolicy, LOG_STD_MIN, LOG_STD_MAX
+
+
+class SelectorActor(Actor):
+    
+    def get_action_dist_params(self, obs: th.Tensor) -> Tuple[th.Tensor, th.Tensor, Dict[str, th.Tensor]]:
+        """
+        Get the parameters for the action distribution.
+
+        :param obs:
+        :return:
+            Mean, standard deviation and optional keyword arguments.
+        """
+        try:
+            features = self.extract_features(obs, self.features_extractor)
+        except AssertionError:
+            features = obs
+            
+        latent_pi = self.latent_pi(features)
+        mean_actions = self.mu(latent_pi)
+
+        if self.use_sde:
+            return mean_actions, self.log_std, dict(latent_sde=latent_pi)
+        # Unstructured exploration (Original implementation)
+        log_std = self.log_std(latent_pi)  # type: ignore[operator]
+        # Original Implementation to cap the standard deviation
+        log_std = th.clamp(log_std, LOG_STD_MIN, LOG_STD_MAX)
+        return mean_actions, log_std, {}
+    
+    def get_action_dist_params_from_features(self, features: th.Tensor) -> Tuple[th.Tensor, th.Tensor, Dict[str, th.Tensor]]:
+        # modifies the original `get_action_dist_params` method to skip observation preprocessing; accepts features directly.
+        latent_pi = self.latent_pi(features)
+        mean_actions = self.mu(latent_pi)
+
+        if self.use_sde:
+            return mean_actions, self.log_std, dict(latent_sde=latent_pi)
+        # Unstructured exploration (Original implementation)
+        log_std = self.log_std(latent_pi)  # type: ignore[operator]
+        # Original Implementation to cap the standard deviation
+        log_std = th.clamp(log_std, LOG_STD_MIN, LOG_STD_MAX)
+        return mean_actions, log_std, {}
+    
+    def action_log_prob_from_reduced_obs(self, features: th.Tensor) -> Tuple[th.Tensor, th.Tensor]:
+        mean_actions, log_std, kwargs = self.get_action_dist_params_from_features(features)
+        # return action and associated log prob
+        return self.action_dist.log_prob_from_params(mean_actions, log_std, **kwargs)
+
+
+class SelectorCritic(Critic):
+    
+    def value_from_reduced_obs(self, features: th.Tensor, action: th.Tensor):
+        qvalue_input = th.cat([features, action], dim=1)
+        quantiles = th.stack(tuple(qf(qvalue_input) for qf in self.q_networks), dim=1)
+        return quantiles
 
 
 class SelectorFeatureExtractor(BaseFeaturesExtractor):
@@ -28,7 +82,7 @@ class SelectorFeatureExtractor(BaseFeaturesExtractor):
                  baseline_features_extractor_class: nn.Module,
                  baseline_features_extractor_kwargs: Dict[str, Any] | None = None, 
                  activation_fn: Type[nn.Module] = nn.ReLU,
-                 selector_temperature: float = 1.0,
+                 selector_temperature: float = 1,
                  ) -> None:
         super().__init__(observation_space, get_flattened_obs_dim(reduced_observation_space))
         
@@ -51,21 +105,28 @@ class SelectorFeatureExtractor(BaseFeaturesExtractor):
                                   self.selector_net_arch, 
                                   activation_fn)
         self.selector = nn.Sequential(*selector_net)
-        
-    def forward(self, obs: th.Tensor, deterministic: bool = False):
-        flattened_obs = self.baseline_features_extractor(obs)
-        selector_logits = self.selector(flattened_obs)
-        
-        # Apply Gumbel-Softmax trick to selector logits
-        if deterministic:
-            gumbel_noise = th.zeros_like(selector_logits)
+            
+        self._features = None
+        self._sampled = None
+        self._probabilities = None
+            
+    def get_features(self):
+        assert self._features is not None, "Method `forward()` has to be called at least once before features are available."
+        return self._features
+    
+    def get_selected(self, return_probs=True):
+        assert self._sampled is not None, "Method `forward()` has to be called at least once before sampled indices are available."
+        assert self._probabilities is not None, "Method `forward()` has to be called at least once before probabilities are available."
+        if return_probs:
+            return self._probabilities
+            # return self._sampled
         else:
-            gumbel_noise = -th.log(-th.log(th.rand_like(selector_logits)))
-        sampled = F.softmax((selector_logits + gumbel_noise) / self.selector_temperature, dim=-1)
-
-        # Straight-Through Estimator: hard in forward, soft in backward
-        hard_sampled = th.zeros_like(sampled).scatter_(-1, sampled.max(dim=-1, keepdim=True)[1], 1.0)
-        hard_sampled = (hard_sampled - sampled).detach() + sampled
+            # hard_sampled = th.zeros_like(self._sampled).scatter_(-1, self._sampled.max(dim=-1, keepdim=True)[1], 1.0)
+            # hard_sampled = (hard_sampled - self._sampled).detach() + self._sampled
+            hard_sampled = th.zeros_like(self._probabilities).scatter_(-1, self._sampled, 1.0)
+            return hard_sampled
+    
+    def features_from_indices(self, obs, hard_sampled):
         detached_hard_sampled = hard_sampled.detach()
         
         # Process each part and aggregate
@@ -75,7 +136,43 @@ class SelectorFeatureExtractor(BaseFeaturesExtractor):
             sliced_obs.append(_obs)
             
         sliced_obs = th.stack(sliced_obs, dim=1)
-        features = (sliced_obs * hard_sampled.unsqueeze(-1)).sum(1)                
+        features = (sliced_obs * hard_sampled.unsqueeze(-1)).sum(1)
+        return features
+        
+    def forward(self, obs: th.Tensor, deterministic: bool = False):
+        flattened_obs = self.baseline_features_extractor(obs)
+        selector_logits = self.selector(flattened_obs)
+        
+        selector_distribution = Categorical(logits=selector_logits)
+        if deterministic:
+            sampled = selector_logits.argmax(dim=-1, keepdim=True)
+        else:
+            sampled = selector_distribution.sample().reshape(-1, 1)
+            
+        # with th.no_grad():
+        #     print(F.softmax(selector_logits, dim=-1))
+        
+        # Apply Gumbel-Softmax trick to selector logits
+        # if deterministic:
+        #     gumbel_noise = th.zeros_like(selector_logits)
+        # else:
+        #     gumbel_noise = -th.log(-th.log(th.rand_like(selector_logits)))
+        # sampled = F.softmax((selector_logits + gumbel_noise) / self.selector_temperature, dim=-1)
+        # sampled = th.zeros((flattened_obs.shape[0], 2)).to(flattened_obs.device)
+        # sampled[:, 1] = 1.0
+
+        # Straight-Through Estimator: hard in forward, soft in backward
+        # hard_sampled = th.zeros_like(sampled).scatter_(-1, sampled.max(dim=-1, keepdim=True)[1], 1.0)
+        # hard_sampled = (hard_sampled - sampled).detach() + sampled
+        hard_sampled = th.zeros_like(selector_logits).scatter_(-1, sampled, 1.0)        
+        features = self.features_from_indices(obs, hard_sampled)
+        
+        self._features = features
+        self._sampled = sampled
+        
+        selector_probabilities = F.softmax(selector_logits, dim=-1)
+        self._probabilities = selector_probabilities
+        
         return features
 
 
@@ -118,7 +215,11 @@ class SelectorMlpPolicy(TQCPolicy):
         features_extractor_kwargs["baseline_features_extractor_class"] = _features_extractor_class
         features_extractor_kwargs["baseline_features_extractor_kwargs"] = _features_extractor_kwargs
         features_extractor_kwargs["object_indices"] = object_indices
-        features_extractor_kwargs["selector_net_arch"] = net_arch["pi"].copy()
+        if "ext" in net_arch:
+            features_extractor_kwargs["selector_net_arch"] = net_arch["ext"].copy()
+        else:
+            features_extractor_kwargs["selector_net_arch"] = net_arch["pi"].copy()
+            
         features_extractor_class = SelectorFeatureExtractor
         
         reduced_observation_space_entries = dict()
@@ -152,13 +253,28 @@ class SelectorMlpPolicy(TQCPolicy):
                          use_retrospective_loss,
                          share_features_extractor)
         
+    def _build(self, lr_schedule: Schedule) -> None:
+        super()._build(lr_schedule)
+        
+        self.actor.optimizer = self.optimizer_class(
+            [p[1] for p in self.actor.named_parameters() if not p[0].startswith("features_extractor")],
+            lr=lr_schedule(1),
+            **self.optimizer_kwargs
+        )
+        
+        self.actor.features_extractor_optimizer = self.optimizer_class(
+            [p[1] for p in self.actor.named_parameters() if p[0].startswith("features_extractor")],
+            lr=lr_schedule(1),
+            **self.optimizer_kwargs
+        )
+        
     def make_actor(self, features_extractor: Optional[BaseFeaturesExtractor] = None) -> Actor:
         actor_kwargs = self._update_features_extractor(self.actor_kwargs, features_extractor)
-        return Actor(**actor_kwargs).to(self.device)
+        return SelectorActor(**actor_kwargs).to(self.device)
 
     def make_critic(self, features_extractor: Optional[BaseFeaturesExtractor] = None) -> Critic:
         critic_kwargs = self._update_features_extractor(self.critic_kwargs, features_extractor)
-        return Critic(**critic_kwargs).to(self.device)
+        return SelectorCritic(**critic_kwargs).to(self.device)
     
 
 class MultiInputSelectorPolicy(SelectorMlpPolicy):

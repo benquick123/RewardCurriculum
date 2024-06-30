@@ -12,12 +12,13 @@ from stable_baselines3.common.vec_env import VecNormalize
 
 
 class ReplayBuffer(stable_baselines3.common.buffers.ReplayBuffer):
-    
-    def __init__(self, *args, scheduler=None, **kwargs):
+
+    def __init__(self, *args, scheduler=None, use_uvfa=True, **kwargs):
         kwargs["n_envs"] = 1
         super().__init__(*args, **kwargs)
         
         self.scheduler = scheduler
+        self.use_uvfa = use_uvfa
         self.reward_dim = self.scheduler.reward_dim
         self.rewards = np.zeros((self.buffer_size, self.n_envs, self.reward_dim), dtype=np.float32)
         self.reward_weights = np.zeros((self.buffer_size, self.n_envs, self.reward_dim), dtype=np.float32)
@@ -78,13 +79,14 @@ class ReplayBuffer(stable_baselines3.common.buffers.ReplayBuffer):
         # Sample randomly the env idx
         env_indices = np.random.randint(0, high=self.n_envs, size=(len(batch_inds),))
 
+        obs = self._normalize_obs(self.observations[batch_inds, env_indices, :], env)
         if self.optimize_memory_usage:
             next_obs = self._normalize_obs(self.observations[(batch_inds + 1) % self.buffer_size, env_indices, :], env)
         else:
             next_obs = self._normalize_obs(self.next_observations[batch_inds, env_indices, :], env)
 
         data = (
-            self._normalize_obs(self.observations[batch_inds, env_indices, :], env),
+            obs,
             self.actions[batch_inds, env_indices, :],
             next_obs,
             # Only use dones that are not due to timeouts
@@ -94,6 +96,22 @@ class ReplayBuffer(stable_baselines3.common.buffers.ReplayBuffer):
         )
         return ReplayBufferSamples(*tuple(map(self.to_torch, data)))
     
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        del state["scheduler"]
+        del state["env"]
+        return state
+    
+    def __setstate__(self, state):
+        assert "env" not in state
+        assert "scheduler" not in state
+        self.__dict__.update(state)
+        self.env = None
+        
+    def set_scheduler(self, scheduler):
+        self.scheduler = scheduler
+        self.reward_dim = self.scheduler.reward_dim
+
 
 class HerReplayBuffer(stable_baselines3.her.HerReplayBuffer):
     
@@ -299,9 +317,7 @@ class HerReplayBuffer(stable_baselines3.her.HerReplayBuffer):
         """
         # Normalize if needed and remove extra dimension (we are using only one env for now)
         obs_ = self._normalize_obs({key: np.array(obs[batch_indices, env_indices, :]) for key, obs in self.observations.items()}, env)
-        next_obs_ = self._normalize_obs(
-            {key: np.array(obs[batch_indices, env_indices, :]) for key, obs in self.next_observations.items()}, env
-        )
+        next_obs_ = self._normalize_obs({key: np.array(obs[batch_indices, env_indices, :]) for key, obs in self.next_observations.items()}, env)
         
         # reward_weights = self.reward_weights[batch_indices, env_indices].reshape(-1, self.reward_dim)
         reward_weights = np.repeat(np.expand_dims(self.scheduler.get_current_weights(), axis=0), repeats=len(batch_indices), axis=0)
@@ -418,3 +434,77 @@ class HerReplayBuffer(stable_baselines3.her.HerReplayBuffer):
     def set_scheduler(self, scheduler):
         self.scheduler = scheduler
         self.reward_dim = self.scheduler.reward_dim
+        
+
+class DictReplayBuffer(stable_baselines3.common.buffers.DictReplayBuffer):
+
+    def __init__(self, *args, scheduler=None, use_uvfa=True, n_sampled_goal=4, **kwargs):
+        kwargs["n_envs"] = 1
+        super().__init__(*args, **kwargs)
+        
+        self.scheduler = scheduler
+        self.use_uvfa = use_uvfa
+        self.n_sampled_goal = n_sampled_goal
+        self.reward_dim = self.scheduler.reward_dim
+        self.rewards = np.zeros((self.buffer_size, self.n_envs, self.reward_dim), dtype=np.float32)
+
+    def _get_samples(
+        self,
+        batch_inds: np.ndarray,
+        env: Optional[VecNormalize] = None,
+    ) -> DictReplayBufferSamples:  # type: ignore[signature-mismatch] #FIXME:
+        # Sample randomly the env idx
+        env_indices = np.random.randint(0, high=self.n_envs, size=(len(batch_inds),))
+
+        # Normalize if needed and remove extra dimension (we are using only one env for now)
+        obs_ = self._normalize_obs({key: obs[batch_inds, env_indices, :] for key, obs in self.observations.items()}, env)
+        next_obs_ = self._normalize_obs({key: obs[batch_inds, env_indices, :] for key, obs in self.next_observations.items()}, env)
+        
+        split_indices = int(len(batch_inds) / (self.n_sampled_goal + 1))
+        current_reward_weights = np.repeat(np.expand_dims(self.scheduler.get_current_weights(), axis=0), repeats=split_indices, axis=0)
+        sampled_reward_weights = self.scheduler.sample_batch(len(batch_inds) - split_indices)
+        reward_weights = np.concatenate([current_reward_weights, sampled_reward_weights], axis=0)
+        
+        rewards = self.rewards[batch_inds, env_indices].reshape(-1, self.reward_dim)
+        rewards = rewards.reshape(-1, 1, self.reward_dim) @ reward_weights.reshape(-1, 1, self.reward_dim).swapaxes(1, 2)
+        rewards = rewards.reshape(-1, 1)
+        
+        if self.use_uvfa:    
+            obs_["weights"][:split_indices] = current_reward_weights
+            obs_["weights"][split_indices:] = sampled_reward_weights
+            next_obs_["weights"][:split_indices] = current_reward_weights
+            next_obs_["weights"][split_indices:] = sampled_reward_weights
+        else:
+            obs_["weights"] = np.zeros((len(batch_inds), self.reward_dim), dtype=np.float32)
+            next_obs_["weights"] = np.zeros((len(batch_inds), self.reward_dim), dtype=np.float32)
+            
+        # Convert to torch tensor
+        observations = {key: self.to_torch(obs) for key, obs in obs_.items()}
+        next_observations = {key: self.to_torch(obs) for key, obs in next_obs_.items()}
+
+        return DictReplayBufferSamples(
+            observations=observations,
+            actions=self.to_torch(self.actions[batch_inds, env_indices]),
+            next_observations=next_observations,
+            # Only use dones that are not due to timeouts
+            # deactivated by default (timeouts is initialized as an array of False)
+            dones=self.to_torch(self.dones[batch_inds, env_indices] * (1 - self.timeouts[batch_inds, env_indices])).reshape(
+                -1, 1
+            ),
+            rewards=self.to_torch(self._normalize_reward(rewards, env)),
+        )
+        
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        del state["scheduler"]
+        return state
+    
+    def __setstate__(self, state):
+        assert "scheduler" not in state
+        self.__dict__.update(state)
+        self.env = None
+        
+    def set_scheduler(self, scheduler):
+        self.scheduler = scheduler
+        self.reward_dim = self.scheduler.reward_dim
+       

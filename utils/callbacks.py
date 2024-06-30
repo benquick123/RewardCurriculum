@@ -257,6 +257,8 @@ class SchedulerCallback(BaseCallback):
         self.scheduler.init_period()
         # self.was_agent_updated = False
         
+        self.model._prev_object = None
+        
     def _on_rollout_start(self) -> None:
         self.reward_sums = np.zeros(self.scheduler.reward_dim)
         self.rollout_episodes = 0
@@ -265,6 +267,8 @@ class SchedulerCallback(BaseCallback):
         for reward_index in range(self.scheduler.reward_dim):
             reward_name = str(reward_index) if reward_index < self.scheduler.reward_dim - 1 else "main"
             self.logger.record(f"rollout/weight_{reward_name}", current_weights[reward_index])
+            
+        self.model._prev_object = None
         
     def _on_step(self):
         
@@ -273,6 +277,8 @@ class SchedulerCallback(BaseCallback):
         for idx, done in enumerate(self.locals["dones"]):
             
             if done:
+                self.model._prev_object = None
+                
                 assert "episode" in self.locals["infos"][idx] and "r_separate" in self.locals["infos"][idx]["episode"], "Did not find individual rewards summed up in the `info` variable. Check if your environment is wrapped in the right Monitor."
                 r_separate = self.locals["infos"][idx]["episode"]["r_separate"]
                 
@@ -284,7 +290,9 @@ class SchedulerCallback(BaseCallback):
                 # new observation is automatically the initial one when episode terminates; this is how SB3 handles resets.
                 was_curriculum_updated = self.scheduler.maybe_update(episode_rewards=r_separate,
                                                                      initial_observation=self.locals["new_obs"],
-                                                                     learner=self.model)
+                                                                     learner=self.model,
+                                                                     num_timesteps=self.model.num_timesteps,
+                                                                     total_timesteps=self.model._total_timesteps)
                 cl_add_idx_list.append(idx)
             
                 if was_curriculum_updated:
@@ -303,7 +311,7 @@ class SchedulerCallback(BaseCallback):
     def _on_rollout_end(self) -> None:
         self.was_agent_updated = True
         self.model._last_obs = self.model.env.reset()
-        
+
         for reward_index in range(self.scheduler.reward_dim):
             reward_name = str(reward_index) if reward_index < self.scheduler.reward_dim - 1 else "main"
             self.logger.record(f"rollout/reward_{reward_name}", self.reward_sums[reward_index] / self.rollout_episodes)

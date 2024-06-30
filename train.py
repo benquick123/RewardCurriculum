@@ -40,23 +40,28 @@ if __name__ == "__main__":
     if config["log"]:
         from utils.callbacks import EvalCallback
         
-        wrappers = []
-        if "SparseRewardWrapper" in config["environment"]["wrappers"]:
-            wrappers += ["SparseRewardWrapper"]
-        wrappers += ["SingleTaskRewardWrapper"]
+        # if "SparseRewardWrapper" in config["environment"]["wrappers"]:
+        #     wrappers += ["SparseRewardWrapper"]
+            
         
-        wrapper_kwargs = []
-        for i in range(len(wrappers)):
-            if wrappers[i] in config["environment"]["wrappers"]:
-                wrapper_kwargs.append(config["environment"]["wrapper_kwargs"][config["environment"]["wrappers"].index(wrappers[i])])
-            else:
-                wrapper_kwargs.append({})
+        wrappers = config["environment"]["wrappers"].copy()
+        wrapper_kwargs = config["environment"]["wrapper_kwargs"].copy()
+        
+        # for i in range(len(wrappers)):
+        #     if wrappers[i] in config["environment"]["wrappers"]:
+        #         wrapper_kwargs.append(config["environment"]["wrapper_kwargs"][config["environment"]["wrappers"].index(wrappers[i])])
+        #     else:
+        #         wrapper_kwargs.append({})
+        
+        wrappers += ["SingleTaskRewardWrapper"]
+        wrapper_kwargs += [{}]
         
         from utils.callbacks import EvalCallback
         eval_env = make_vec_env(make_env_fn, n_envs=1, env_kwargs={"wrappers": wrappers, "wrapper_kwargs": wrapper_kwargs, "ignore_keyword": None}, seed=config["seed"], vec_env_cls=SubprocVecEnv)
         callback = [EvalCallback(eval_env=eval_env, warn=False, **config["eval_kwargs"]), callback]
 
-    learner = config["learner_class"]("MultiInputSelectorPolicy", env, **config["learner_kwargs"])
+    # learner = config["learner_class"]("MultiInputSelectorPolicy", env, **config["learner_kwargs"])
+    learner = config["learner_class"]("MultiInputPolicy", env, **config["learner_kwargs"])
     if args.continue_from is not None:
         if args.continue_mode == "final":
             param_load_path = os.path.join(args.continue_from, "final.zip")

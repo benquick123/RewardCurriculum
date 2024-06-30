@@ -3,8 +3,8 @@
     "learner_kwargs": {
         "scheduler_class": "cl_algorithms.alpgmm.ALPGMM",
         "scheduler_kwargs": {
-            "update_frequency": 5,
-            "update_weights_frequency": 5,
+            "update_frequency": 50,
+            "update_weights_frequency": 10,
             "fitting_buffer_size": 100,
             "nb_neighbours": 3,
             "nb_bootstrap": 5,

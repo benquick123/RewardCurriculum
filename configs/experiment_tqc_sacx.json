@@ -1,0 +1,6 @@
+{
+    "template": "configs/templates/experiment_tqc.json",
+    "learner_kwargs": {
+        "scheduler_class": "cl_algorithms.sac_x.SACX"
+    }
+}
