@@ -135,11 +135,7 @@ class SingleTaskRewardWrapper(gym.RewardWrapper):
 
 # gymnasium environment wrappers
 class AntAuxRewardWrapper(AuxRewardWrapper):
-    
-    def __init__(self, env):
-        super(AntAuxRewardWrapper, self).__init__(env)
-        self.prev_observation = None
-        
+            
     def reward(self, reward, observation, action, info):
         return np.array([
             info["reward_survive"],
@@ -151,52 +147,55 @@ class AntAuxRewardWrapper(AuxRewardWrapper):
 
 class HalfCheetahAuxRewardWrapper(AuxRewardWrapper):
     
-    def __init__(self, env):
-        super(HalfCheetahAuxRewardWrapper, self).__init__(env)
-        self.prev_observation = None
-        
     def reward(self, reward, observation, action, info):
-        return reward
+        return np.array([
+            info["reward_run"],
+            info["reward_ctrl"],
+            reward
+        ])
 
 
 class HopperAuxRewardWrapper(AuxRewardWrapper):
     
-    def __init__(self, env):
-        super(HopperAuxRewardWrapper, self).__init__(env)
-        self.prev_observation = None
-        
     def reward(self, reward, observation, action, info):
-        return reward
+        return np.array([
+            self.env.unwrapped.healthy_reward,
+            self.env.unwrapped._forward_reward_weight * info["x_velocity"],
+            self.env.unwrapped.control_cost(action),
+            reward
+        ])
     
 
 class HumanoidAuxRewardWrapper(AuxRewardWrapper):
     
-    def __init__(self, env):
-        super(HumanoidAuxRewardWrapper, self).__init__(env)
-        self.prev_observation = None
-        
     def reward(self, reward, observation, action, info):
-        return reward
+        return np.array([
+            info["reward_survive"],
+            info["reward_linvel"],
+            info["reward_quadctrl"],
+            reward
+        ])
     
     
 class SwimmerAuxRewardWrapper(AuxRewardWrapper):
     
-    def __init__(self, env):
-        super(SwimmerAuxRewardWrapper, self).__init__(env)
-        self.prev_observation = None
-        
     def reward(self, reward, observation, action, info):
-        return reward
+        return np.array([
+            info["reward_fwd"],
+            info["reward_ctrl"],
+            reward
+        ])
 
 
-class WalkerAuxRewardWrapper(AuxRewardWrapper):
+class Walker2DAuxRewardWrapper(AuxRewardWrapper):
     
-    def __init__(self, env):
-        super(WalkerAuxRewardWrapper, self).__init__(env)
-        self.prev_observation = None
-        
     def reward(self, reward, observation, action, info):
-        return reward
+        return np.array([
+            self.env.unwrapped.healthy_reward,
+            self.env.unwrapped._forward_reward_weight * info["x_velocity"],
+            self.env.unwrapped.control_cost(action),
+            reward
+        ])
 
 
 
