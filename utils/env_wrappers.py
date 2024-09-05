@@ -145,7 +145,7 @@ class AntAuxRewardWrapper(AuxRewardWrapper):
         ])
     
 
-class HalfCheetahAuxRewardWrapper(AuxRewardWrapper):
+class HalfcheetahAuxRewardWrapper(AuxRewardWrapper):
     
     def reward(self, reward, observation, action, info):
         return np.array([
@@ -161,7 +161,7 @@ class HopperAuxRewardWrapper(AuxRewardWrapper):
         return np.array([
             self.env.unwrapped.healthy_reward,
             self.env.unwrapped._forward_reward_weight * info["x_velocity"],
-            self.env.unwrapped.control_cost(action),
+            -self.env.unwrapped.control_cost(action),
             reward
         ])
     
@@ -193,7 +193,7 @@ class Walker2DAuxRewardWrapper(AuxRewardWrapper):
         return np.array([
             self.env.unwrapped.healthy_reward,
             self.env.unwrapped._forward_reward_weight * info["x_velocity"],
-            self.env.unwrapped.control_cost(action),
+            -self.env.unwrapped.control_cost(action),
             reward
         ])
 

@@ -39,6 +39,7 @@ class TQC(sb3_contrib.TQC):
         self.use_uvfa = use_uvfa
         self.scheduler = scheduler_class(reward_dim=reward_dim, **scheduler_kwargs)
         
+        kwargs["replay_buffer_class"] = kwargs.get("replay_buffer_class", "HerReplayBuffer")
         if isinstance(kwargs["replay_buffer_class"], str):
             if kwargs["replay_buffer_class"] == "HerReplayBuffer":
                 kwargs["replay_buffer_class"] = HerReplayBuffer

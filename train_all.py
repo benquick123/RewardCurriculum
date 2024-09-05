@@ -11,138 +11,63 @@ def run_command(command):
 
 if __name__ == "__main__":
     start_seed = 0
-    n_seeds = 5
-    max_processes = 4
+    n_seeds = 10
+    max_processes = 3
     
     experiment_configs = [
-        # "--config_path configs/experiment_sac_single_task.json --env_name LunarLanderContinuous-v2 --environment.wrapper_kwargs.0.reward_threshold 99",
-        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name LunarLanderContinuous-v2",
-        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/acrobot-swingup-v0",
-        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/acrobot-swingup-v0",
-        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/acrobot-swingup_sparse-v0",
-        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/acrobot-swingup_sparse-v0",
-        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/ball_in_cup-catch-v0",
-        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/ball_in_cup-catch-v0",
-        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/cartpole-balance-v0",
-        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/cartpole-balance-v0",
-        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/cartpole-balance_sparse-v0",
-        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/cartpole-balance_sparse-v0",
-        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/cartpole-swingup-v0",
-        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/cartpole-swingup-v0",
-        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/cartpole-swingup_sparse-v0",
-        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/cartpole-swingup_sparse-v0",
-        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/cheetah-run-v0",
-        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/cheetah-run-v0",
-        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/finger-spin-v0",
-        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/finger-spin-v0",
-        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/finger-turn_easy-v0",
-        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/finger-turn_easy-v0",
-        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/finger-turn_hard-v0",
-        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/finger-turn_hard-v0",
-        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/fish-upright-v0",
-        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/fish-upright-v0",
-        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/fish-swim-v0",
-        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/fish-swim-v0",
-        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/hopper-stand-v0",
-        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/hopper-stand-v0",
-        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/hopper-hop-v0",
-        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/hopper-hop-v0",
-        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/humanoid-stand-v0",
-        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/humanoid-stand-v0",
-        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/humanoid-walk-v0",
-        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/humanoid-walk-v0",
-        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/humanoid-run-v0",
-        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/humanoid-run-v0",
-        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/manipulator-bring_ball-v0",
-        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/manipulator-bring_ball-v0",
-        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/pendulum-swingup-v0",
-        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/pendulum-swingup-v0",
-        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/point_mass-easy-v0",
-        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/point_mass-easy-v0",
-        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/reacher-easy-v0",
-        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/reacher-easy-v0",
-        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/reacher-hard-v0",
-        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/reacher-hard-v0",
-        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/swimmer-swimmer6-v0",
-        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/swimmer-swimmer6-v0",
-        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/swimmer-swimmer15-v0",
-        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/swimmer-swimmer15-v0",
-        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/walker-stand-v0",
-        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/walker-stand-v0",
-        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/walker-walk-v0",
-        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/walker-walk-v0",
-        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/walker-run-v0",
-        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/walker-run-v0",
-        
-        # closest gym only environments in dm_control suite.
-        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/swimmer-swimmer6-v0",
-        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/walker-walk-v0",
-        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/hopper-hop-v0",
-        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/humanoid-walk-v0",
-        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/walker-walk-v0",
-        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/cheetah-run-v0",
-        # "--config_path configs/experiment_sac_single_task_non_sparse.json --env_name dm_control/swimmer-swimmer6-v0",
-        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/hopper-hop-v0",
-        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/humanoid-walk-v0",
-        # "--config_path configs/experiment_sac_single_task.json --env_name dm_control/cheetah-run-v0",
-        
-        # alpgmm
-        # "--config_path configs/experiment_sac_alpgmm.json --env_name dm_control/cheetah-run-v0",
-        # "--config_path configs/experiment_sac_alpgmm.json --env_name dm_control/hopper-hop-v0",
-        # "--config_path configs/experiment_sac_alpgmm.json --env_name dm_control/humanoid-walk-v0",
-        # "--config_path configs/experiment_sac_alpgmm.json --env_name dm_control/swimmer-swimmer6-v0",
-        # "--config_path configs/experiment_sac_alpgmm.json --env_name dm_control/walker-walk-v0",
-        
-        # PandaStack
-        # "--config_path configs/experiment_sac_single_task_sparse.json --env_name PandaStack-v3 --environment.wrapper_kwargs.0.reward_threshold -0.1",
-        # "--config_path configs/experiment_sac_single_task_dense.json --env_name PandaStack-v3 --environment.wrapper_kwargs.0.reward_threshold -0.1"
-        
-        # PandaPush and PandaPickAndPlace with paper hyperparams
-        # "--config_path configs/experiment_sac_single_task_dense.json --env_name PandaPush-v3",
-        # "--config_path configs/experiment_sac_single_task_sparse.json --env_name PandaPush-v3",
-        # "--config_path configs/experiment_sac_single_task_dense.json --env_name PandaPickAndPlace-v3",
-        # "--config_path configs/experiment_sac_single_task_sparse.json --env_name PandaPickAndPlace-v3",
-        # "--config_path configs/experiment_sac_single_task_dense.json --env_name PandaPush-v3 --learner_kwargs.use_retrospective_loss True",
-        # "--config_path configs/experiment_sac_single_task_sparse.json --env_name PandaPush-v3 --learner_kwargs.use_retrospective_loss True",
-        # "--config_path configs/experiment_sac_single_task_dense.json --env_name PandaPickAndPlace-v3 --learner_kwargs.use_retrospective_loss True",
-        # "--config_path configs/experiment_sac_single_task_sparse.json --env_name PandaPickAndPlace-v3 --learner_kwargs.use_retrospective_loss True"
-        
-        # Panda and TQC
-        # "--config_path configs/experiment_tqc_single_task_sparse.json --env_name PandaPushDense-v3",
-        # "--config_path configs/experiment_tqc_single_task_sparse.json --env_name PandaPushDense-v3 --learner_kwargs.use_retrospective_loss True",
-        # "--config_path configs/experiment_tqc_single_task_sparse.json --env_name PandaPickAndPlaceDense-v3",
-        # "--config_path configs/experiment_tqc_single_task_sparse.json --env_name PandaPickAndPlaceDense-v3 --learner_kwargs.use_retrospective_loss True",
-        # "--config_path configs/experiment_tqc_single_task_dense.json --env_name PandaPushDense-v3",
-        # "--config_path configs/experiment_tqc_single_task_dense.json --env_name PandaPickAndPlaceDense-v3",
-        
-        # "--config_path configs/experiment_tqc_single_task_sparse.json --env_name PandaPush-v3 --log sparse_env_termination",
-        # "--config_path configs/experiment_tqc_single_task_sparse.json --env_name PandaPickAndPlace-v3 --log sparse_env_termination",
-        
-        # Panda multi-reward stacking
-        # "--config_path configs/experiment_tqc_single_task_sparse.json --env_name PandaMultiRewardStackDense-v3",
-        # "--config_path configs/experiment_tqc_single_task_dense.json --env_name PandaMultiRewardStackDense-v3",
-        # "--config_path configs/experiment_tqc_random.json --env_name PandaMultiRewardStackDense-v3",
-        # "--config_path configs/experiment_tqc_setter_solver.json --env_name PandaMultiRewardStackDense-v3",
-        # "--config_path configs/experiment_tqc_currot.json --env_name PandaMultiRewardStackDense-v3"
-        
-        # ------------------------------------------------------------------------------------------------------------------------------
         # Paper experiments:
         
-        # Mutli-reward Pick-and-place with TQC
+        # Multi-reward Pick-and-place with TQC
         # "--config_path configs/experiment_tqc_random.json --env_name PandaMultiRewardPickAndPlaceDense-v3",
         # "--config_path configs/experiment_tqc_manual_task.json --env_name PandaMultiRewardPickAndPlaceDense-v3",
         # "--config_path configs/experiment_tqc_alpgmm.json --env_name PandaMultiRewardPickAndPlaceDense-v3",
         # "--config_path configs/experiment_tqc_currot.json --env_name PandaMultiRewardPickAndPlaceDense-v3",
         # "--config_path configs/experiment_tqc_setter_solver.json --env_name PandaMultiRewardPickAndPlaceDense-v3",
-        # "--config_path configs/experiment_tqc_sacx.json --env_name PandaMultiRewardPickAndPlaceDense-v3"
+        # "--config_path configs/experiment_tqc_sacx.json --env_name PandaMultiRewardPickAndPlaceDense-v3",
         
-        # Mutli-reward Pick-and-place with TQC
-        "--config_path configs/experiment_tqc_random.json --env_name PandaMultiRewardPickAndPlaceObstacleDense-v3",
-        "--config_path configs/experiment_tqc_manual_task.json --env_name PandaMultiRewardPickAndPlaceObstacleDense-v3",
-        "--config_path configs/experiment_tqc_alpgmm.json --env_name PandaMultiRewardPickAndPlaceObstacleDense-v3",
-        "--config_path configs/experiment_tqc_currot.json --env_name PandaMultiRewardPickAndPlaceObstacleDense-v3",
-        "--config_path configs/experiment_tqc_setter_solver.json --env_name PandaMultiRewardPickAndPlaceObstacleDense-v3",
-        "--config_path configs/experiment_tqc_sacx.json --env_name PandaMultiRewardPickAndPlaceObstacleDense-v3"
+        # "--config_path configs/experiment_tqc_random.json --env_name PandaMultiRewardPickAndPlaceSphereDense-v3",
+        # "--config_path configs/experiment_tqc_manual_task.json --env_name PandaMultiRewardPickAndPlaceSphereDense-v3",
+        # "--config_path configs/experiment_tqc_alpgmm.json --env_name PandaMultiRewardPickAndPlaceSphereDense-v3",
+        # "--config_path configs/experiment_tqc_currot.json --env_name PandaMultiRewardPickAndPlaceSphereDense-v3",
+        # "--config_path configs/experiment_tqc_setter_solver.json --env_name PandaMultiRewardPickAndPlaceSphereDense-v3",
+        # "--config_path configs/experiment_tqc_sacx.json --env_name PandaMultiRewardPickAndPlaceSphereDense-v3",
+        
+        # "--config_path configs/experiment_tqc_random.json --env_name PandaMultiRewardPickAndPlaceObstacleDense-v3",
+        # "--config_path configs/experiment_tqc_manual_task.json --env_name PandaMultiRewardPickAndPlaceObstacleDense-v3",
+        # "--config_path configs/experiment_tqc_alpgmm.json --env_name PandaMultiRewardPickAndPlaceObstacleDense-v3",
+        # "--config_path configs/experiment_tqc_currot.json --env_name PandaMultiRewardPickAndPlaceObstacleDense-v3",
+        # "--config_path configs/experiment_tqc_setter_solver.json --env_name PandaMultiRewardPickAndPlaceObstacleDense-v3",
+        # "--config_path configs/experiment_tqc_sacx.json --env_name PandaMultiRewardPickAndPlaceObstacleDense-v3",
+        
+        # Multi-reward Slide with TQC
+        "--config_path configs/experiment_tqc_random.json --env_name PandaMultiRewardSlideDense-v3",
+        "--config_path configs/experiment_tqc_manual_task.json --env_name PandaMultiRewardSlideDense-v3",
+        "--config_path configs/experiment_tqc_alpgmm.json --env_name PandaMultiRewardSlideDense-v3",
+        "--config_path configs/experiment_tqc_currot.json --env_name PandaMultiRewardSlideDense-v3",
+        "--config_path configs/experiment_tqc_setter_solver.json --env_name PandaMultiRewardSlideDense-v3",
+        "--config_path configs/experiment_tqc_sacx.json --env_name PandaMultiRewardSlideDense-v3",
+        
+        # MUJOCO experiments:
+        # "--config_path configs/experiment_tqc_random.json --env_name Ant-v4",
+        # "--config_path configs/experiment_tqc_random.json --env_name HalfCheetah-v4 --environment.wrapper_kwargs '[{\"observation_keys\": [\"weights\"], \"observation_dims\": [(3, )]}, {}]' --learner_kwargs.reward_dim 3",
+        # "--config_path configs/experiment_tqc_random.json --env_name Hopper-v4",
+        # "--config_path configs/experiment_tqc_random.json --env_name Humanoid-v4",
+        # "--config_path configs/experiment_tqc_random.json --env_name Swimmer-v4 --environment.wrapper_kwargs '[{\"observation_keys\": [\"weights\"], \"observation_dims\": [(3, )]}, {}]' --learner_kwargs.reward_dim 3",
+        # "--config_path configs/experiment_tqc_random.json --env_name Walker2d-v4",
+        
+        # "--config_path configs/experiment_tqc_manual_task.json --env_name Ant-v4",
+        # "--config_path configs/experiment_tqc_manual_task.json --env_name HalfCheetah-v4 --environment.wrapper_kwargs '[{\"observation_keys\": [\"weights\"], \"observation_dims\": [(3, )]}, {}]' --learner_kwargs.reward_dim 3",
+        # "--config_path configs/experiment_tqc_manual_task.json --env_name Hopper-v4",
+        # "--config_path configs/experiment_tqc_manual_task.json --env_name Humanoid-v4",
+        # "--config_path configs/experiment_tqc_manual_task.json --env_name Swimmer-v4 --environment.wrapper_kwargs '[{\"observation_keys\": [\"weights\"], \"observation_dims\": [(3, )]}, {}]' --learner_kwargs.reward_dim 3",
+        # "--config_path configs/experiment_tqc_manual_task.json --env_name Walker2d-v4",
+        
+        # "--config_path configs/experiment_tqc_setter_solver.json --env_name Ant-v4",
+        # "--config_path configs/experiment_tqc_setter_solver.json --env_name HalfCheetah-v4 --environment.wrapper_kwargs '[{\"observation_keys\": [\"weights\"], \"observation_dims\": [(3, )]}, {}]' --learner_kwargs.reward_dim 3",
+        # "--config_path configs/experiment_tqc_setter_solver.json --env_name Hopper-v4",
+        # "--config_path configs/experiment_tqc_setter_solver.json --env_name Humanoid-v4",
+        # "--config_path configs/experiment_tqc_setter_solver.json --env_name Swimmer-v4 --environment.wrapper_kwargs '[{\"observation_keys\": [\"weights\"], \"observation_dims\": [(3, )]}, {}]' --learner_kwargs.reward_dim 3",
+        # "--config_path configs/experiment_tqc_setter_solver.json --env_name Walker2d-v4",
     ]
     
     command = "python train.py %s --seed %d"

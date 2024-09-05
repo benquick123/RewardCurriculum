@@ -1,0 +1,10 @@
+{
+    "environment": {
+        "n_envs": 1,
+        "wrappers": ["DictObservationWrapper", "__envwrapper__"],
+        "wrapper_kwargs": [{"observation_keys": ["weights"], "observation_dims": [[4]]}, {}]
+    },
+    "learner_kwargs": {
+        "replay_buffer_class": "DictReplayBuffer"
+    }
+}

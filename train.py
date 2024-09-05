@@ -43,7 +43,6 @@ if __name__ == "__main__":
         # if "SparseRewardWrapper" in config["environment"]["wrappers"]:
         #     wrappers += ["SparseRewardWrapper"]
             
-        
         wrappers = config["environment"]["wrappers"].copy()
         wrapper_kwargs = config["environment"]["wrapper_kwargs"].copy()
         
