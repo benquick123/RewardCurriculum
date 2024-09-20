@@ -139,9 +139,9 @@ class AntAuxRewardWrapper(AuxRewardWrapper):
     def reward(self, reward, observation, action, info):
         return np.array([
             info["reward_survive"],
+            -info["reward_ctrl"],
             info["reward_forward"],
-            info["reward_ctrl"],
-            reward
+            # reward
         ])
     
 

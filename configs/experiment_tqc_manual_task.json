@@ -3,7 +3,7 @@
     "learner_kwargs": {
         "scheduler_class": "cl_algorithms.manual_task.ManualTask",
         "scheduler_kwargs": {
-            "reward_weights": [0.0, 0.0, 1.0]
+            "reward_weights": [0.0, 1.0]
         }
     }
 }

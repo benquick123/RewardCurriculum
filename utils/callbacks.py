@@ -1,6 +1,7 @@
 import os
 import warnings
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from time import time
 
 import gymnasium as gym
 import numpy as np
@@ -126,6 +127,8 @@ class EvalCallback(stable_baselines3.common.callbacks.EvalCallback):
         
     def _on_step(self) -> bool:
         continue_training = True
+        
+        start = time()
 
         if self.eval_freq > 0 and self.n_calls % self.eval_freq == 0:
             # Sync training and eval env if there is VecNormalize
@@ -208,6 +211,8 @@ class EvalCallback(stable_baselines3.common.callbacks.EvalCallback):
             if self.callback is not None:
                 continue_training = continue_training and self._on_event()
 
+        self.model.evaluation_time += time() - start
+
         return continue_training
 
 
@@ -272,6 +277,8 @@ class SchedulerCallback(BaseCallback):
         
     def _on_step(self):
         
+        start = time()
+        
         cl_add_idx_list = []
         was_curriculum_updated = False
         for idx, done in enumerate(self.locals["dones"]):
@@ -305,6 +312,8 @@ class SchedulerCallback(BaseCallback):
             assert len(cl_add_idx_list) > 0
             # discard all experience collected in other environments:
             self._safely_reset_buffers(set(range(len(self.locals["dones"]))) - set(cl_add_idx_list))
+            
+        self.model.cl_train_time += time() - start
                 
         return True
             

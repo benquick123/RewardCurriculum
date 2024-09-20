@@ -1,7 +1,7 @@
 {
     "template": ["configs/templates/experiment.json", "configs/templates/experiment_env.json"],
     "learner_class": "rl_algorithms.tqc.TQC",
-    "log_path": "./results/panda_pick_and_place_obstacle_long_v2",
+    "log_path": "./results/panda_slide_long",
     "log": true,
     "log_model_interval": false,
     "learner_kwargs": {

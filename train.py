@@ -19,7 +19,7 @@ from stable_baselines3.common.vec_env import SubprocVecEnv
 from utils.args import parse_args
 from utils.callbacks import SchedulerCallback
 from utils.configs import get_config
-from utils.logging import save_self
+from utils.logging import save_self, save_times
 from utils.env_wrappers import get_env, make_vec_env
 import panda_gym
 
@@ -76,7 +76,17 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("Keyboard interrupt.")
     finally:
+        times_dict = {
+            "simulation_time": learner.simulation_time - learner.cl_train_time - learner.evaluation_time,
+            "rl_train_time": learner.rl_train_time,
+            "cl_train_time": learner.cl_train_time,
+            "evaluation_time": learner.evaluation_time
+        }
+        print(config["learner_kwargs"]["scheduler_class"], "\n", times_dict)
+        
         if config["log"]:
+            save_times(times_dict, os.path.join(config["log_path"], config["log"], "times.json"))
+            
             learner.save(os.path.join(config["log_path"], config["log"], "final.zip"))
             learner.save_replay_buffer(os.path.join(config["log_path"], config["log"], "replay_buffer.pkl"))
     

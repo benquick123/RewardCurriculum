@@ -2,16 +2,20 @@ from copy import deepcopy
 from functools import partial
 from typing import ClassVar, Dict, Optional, Tuple, Type, Union, List, Any
 
+from time import time
+
 import numpy as np
 import sb3_contrib
 import stable_baselines3
+from stable_baselines3.common.buffers import ReplayBuffer
+from stable_baselines3.common.vec_env import VecEnv
 import torch as th
 from gymnasium import spaces
 from sb3_contrib.common.utils import quantile_huber_loss
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.noise import ActionNoise
 from stable_baselines3.common.policies import BasePolicy
-from stable_baselines3.common.type_aliases import MaybeCallback
+from stable_baselines3.common.type_aliases import MaybeCallback, RolloutReturn, TrainFreq
 from stable_baselines3.common.utils import polyak_update
 
 from cl_algorithms.single_task import SingleTask
@@ -60,6 +64,11 @@ class TQC(sb3_contrib.TQC):
         
         self._prev_object = None
         
+        self.evaluation_time = 0
+        self.simulation_time = 0
+        self.rl_train_time = 0
+        self.cl_train_time = 0
+        
         super().__init__(policy, env, **kwargs)
         
     def _setup_model(self) -> None:
@@ -68,7 +77,16 @@ class TQC(sb3_contrib.TQC):
         if self.use_retrospective_loss:
             self.critic_retro = self.policy.critic_retro
             
+    def collect_rollouts(self, env: VecEnv, callback: BaseCallback, train_freq: TrainFreq, replay_buffer: ReplayBuffer, action_noise: ActionNoise | None = None, learning_starts: int = 0, log_interval: int | None = None) -> RolloutReturn:
+        start = time()
+        ret = super().collect_rollouts(env, callback, train_freq, replay_buffer, action_noise, learning_starts, log_interval)
+        self.simulation_time += time() - start
+        return ret
+            
     def train(self, gradient_steps: int, batch_size: int = 64) -> None:
+        
+        start = time()
+        
         # Switch to train mode (this affects batch norm / dropout)
         self.policy.set_training_mode(True)
         # Update optimizers learning rate
@@ -263,6 +281,8 @@ class TQC(sb3_contrib.TQC):
             self.critic_retro.load_state_dict(self.critic.state_dict())
 
         self._n_updates += gradient_steps
+        
+        self.rl_train_time += time() - start
 
         self.logger.record("train/n_updates", self._n_updates, exclude="tensorboard")
         self.logger.record("train/ent_coef", np.mean(ent_coefs))

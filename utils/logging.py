@@ -52,3 +52,8 @@ def save_self(config_path, args, remaining_args, config):
         f.write(str(args))
     with open(os.path.join(path, "remaining_args.txt"), "w") as f:
         f.write(str(remaining_args))
+
+
+def save_times(times_dict, file_path):
+    with open(file_path, "w") as f:
+        json.dump(times_dict, f, indent=4, sort_keys=True)
