@@ -27,3 +27,7 @@ python train.py --config_path configs/experiment_tqc_setter_solver --env_name Pa
 ```
 
 This will run one instance of the experiment using the Setter-Solver algorithm and learning to pick-and-place a sphere. (Please note that even though the environment name has the word "Dense" in it, wrappers take care of sparsifying the rewards.)
+
+## Note
+
+This repository is an official implementation of the paper Curriculum Learning Algorithms for Reward Weighting in a Sparse Reward Robotic Manipulation Tasks. It consists of two branches, `master` and `additional`. The latter implements additional experimental in possibly broken features, while the former reflects the code used for experiments in the paper and some additional documentation. For re-running the experiments from the paper or making sense of our approach we recommend using the code from the `master` branch.
