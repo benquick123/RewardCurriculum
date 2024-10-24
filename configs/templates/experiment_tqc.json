@@ -1,7 +1,7 @@
 {
     "template": ["configs/templates/experiment.json", "configs/templates/experiment_env.json"],
     "learner_class": "rl_algorithms.tqc.TQC",
-    "log_path": "./results/panda_slide_long",
+    "log_path": "./results/ablation_study",
     "log": true,
     "log_model_interval": false,
     "learner_kwargs": {

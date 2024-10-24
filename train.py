@@ -29,17 +29,22 @@ if __name__ == "__main__":
     config = get_config(args.config_path, args, remaining_args)
     save_self(args.config_path, args, remaining_args, config)
     
-    make_env_fn = lambda wrappers, wrapper_kwargs, ignore_keyword="ignore" : get_env(config["environment"]["env_name"], wrappers=wrappers, wrapper_kwargs=wrapper_kwargs, ignore_keyword=ignore_keyword)
+    make_env_fn = lambda wrappers, wrapper_kwargs, ignore_keyword="ignore", env_init_kwargs={}: get_env(config["environment"]["env_name"], 
+                                                                                     wrappers=wrappers, 
+                                                                                     wrapper_kwargs=wrapper_kwargs, 
+                                                                                     ignore_keyword=ignore_keyword,
+                                                                                     env_init_kwargs=env_init_kwargs)
     env = make_vec_env(make_env_fn, 
                        n_envs=config["environment"]["n_envs"], 
-                       env_kwargs={"wrappers": config["environment"]["wrappers"], "wrapper_kwargs": config["environment"]["wrapper_kwargs"]},
+                       env_kwargs={"wrappers": config["environment"]["wrappers"], 
+                                   "wrapper_kwargs": config["environment"]["wrapper_kwargs"]},
                        monitor_kwargs={"allow_early_resets": True},
                        seed=config["seed"], vec_env_cls=SubprocVecEnv)
     
+    config["learner_kwargs"]["reward_dim"] = env.get_attr("reward_dim", indices=[0])[0]
+    
     callback = SchedulerCallback(config)
-    if config["log"]:
-        from utils.callbacks import EvalCallback
-        
+    if config["log"]:        
         # if "SparseRewardWrapper" in config["environment"]["wrappers"]:
         #     wrappers += ["SparseRewardWrapper"]
             
@@ -56,7 +61,14 @@ if __name__ == "__main__":
         wrapper_kwargs += [{}]
         
         from utils.callbacks import EvalCallback
-        eval_env = make_vec_env(make_env_fn, n_envs=1, env_kwargs={"wrappers": wrappers, "wrapper_kwargs": wrapper_kwargs, "ignore_keyword": None}, seed=config["seed"], vec_env_cls=SubprocVecEnv)
+        try:
+            # in the case of stacking, we don't want to have the cube placed on the table (p_low is set and is 0.0)
+            eval_env = make_vec_env(make_env_fn, n_envs=1, env_kwargs={"wrappers": wrappers, "wrapper_kwargs": wrapper_kwargs, "ignore_keyword": None, "env_init_kwargs": {"p_low": 0.0}}, seed=config["seed"], vec_env_cls=SubprocVecEnv)
+        except ConnectionResetError:
+            # in all other cases, we are fine with the default environment
+            print("The environment constructor does not support p_low.")
+            eval_env = make_vec_env(make_env_fn, n_envs=1, env_kwargs={"wrappers": wrappers, "wrapper_kwargs": wrapper_kwargs, "ignore_keyword": None}, seed=config["seed"], vec_env_cls=SubprocVecEnv)
+            
         callback = [EvalCallback(eval_env=eval_env, warn=False, **config["eval_kwargs"]), callback]
 
     # learner = config["learner_class"]("MultiInputSelectorPolicy", env, **config["learner_kwargs"])

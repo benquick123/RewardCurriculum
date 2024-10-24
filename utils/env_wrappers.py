@@ -130,7 +130,6 @@ class SingleTaskRewardWrapper(gym.RewardWrapper):
     
     def compute_reward(self, achieved_goal, desired_goal, infos):
         return np.expand_dims(self.env.compute_reward(achieved_goal, desired_goal, infos).reshape(len(achieved_goal), -1)[:, self.task_index], axis=-1)
-        
 
 
 # gymnasium environment wrappers
@@ -624,9 +623,13 @@ def make_vec_env(
     return vec_env
 
     
-def get_env(env_name, wrappers=["SparseRewardWrapper", "__envwrapper__", "gym.wrappers.FlattenObservation"], wrapper_kwargs=[{}, {}, {}], ignore_keyword=None):
+def get_env(env_name, 
+            wrappers=["SparseRewardWrapper", "__envwrapper__", "gym.wrappers.FlattenObservation"], 
+            wrapper_kwargs=[{}, {}, {}], 
+            ignore_keyword=None, 
+            env_init_kwargs={}):
     # works with classes in this file and with classes that are imported at the beginning.
-    env = gym.make(env_name)
+    env = gym.make(env_name, **env_init_kwargs)
     
     for i, wrapper_name in enumerate(wrappers):
         if wrapper_name == "__envwrapper__":

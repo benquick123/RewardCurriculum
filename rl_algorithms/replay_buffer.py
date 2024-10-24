@@ -328,6 +328,9 @@ class HerReplayBuffer(stable_baselines3.her.HerReplayBuffer):
         if self.use_uvfa:
             obs_["weights"] = reward_weights
             next_obs_["weights"] = reward_weights
+        else:
+            obs_["weights"] = np.zeros_like(reward_weights)
+            next_obs_["weights"] = np.zeros_like(reward_weights)
 
         # Convert to torch tensor
         observations = {key: self.to_torch(obs) for key, obs in obs_.items()}
@@ -399,6 +402,9 @@ class HerReplayBuffer(stable_baselines3.her.HerReplayBuffer):
         if self.use_uvfa:
             obs["weights"] = reward_weights
             next_obs["weights"] = reward_weights
+        else:
+            obs["weights"] = np.zeros_like(reward_weights)
+            next_obs["weights"] = np.zeros_like(reward_weights)
         
         obs = self._normalize_obs(obs, env)
         next_obs = self._normalize_obs(next_obs, env)

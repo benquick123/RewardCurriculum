@@ -39,8 +39,17 @@ class TQC(sb3_contrib.TQC):
     }
     policy: TQCPolicy
     
-    def __init__(self, policy, env, use_uvfa=True, reward_dim=1, scheduler_class=SingleTask, scheduler_kwargs={}, use_retrospective_loss=False, **kwargs):
+    def __init__(self, policy, env,  
+                 reward_dim=1, 
+                 scheduler_class=SingleTask, 
+                 scheduler_kwargs={}, 
+                 use_retrospective_loss=False, 
+                 use_upfa=True, # universal policy function approximation
+                 use_uvfa=True, # universal value function approximation
+                 **kwargs):
         self.use_uvfa = use_uvfa
+        self.use_upfa = use_upfa
+        
         self.scheduler = scheduler_class(reward_dim=reward_dim, **scheduler_kwargs)
         
         kwargs["replay_buffer_class"] = kwargs.get("replay_buffer_class", "HerReplayBuffer")
@@ -58,7 +67,7 @@ class TQC(sb3_contrib.TQC):
             kwargs["replay_buffer_kwargs"] = dict()
         # kwargs["replay_buffer_kwargs"]["reward_dim"] = reward_dim
         kwargs["replay_buffer_kwargs"]["scheduler"] = self.scheduler
-        kwargs["replay_buffer_kwargs"]["use_uvfa"] = use_uvfa
+        kwargs["replay_buffer_kwargs"]["use_uvfa"] = use_uvfa or use_upfa
         
         self.use_retrospective_loss = use_retrospective_loss
         
@@ -229,6 +238,9 @@ class TQC(sb3_contrib.TQC):
             if hasattr(self.critic, "value_from_reduced_obs"):
                 qf_pi = self.critic.value_from_reduced_obs(reduced_observations, actions_pi).mean(dim=2).mean(dim=1, keepdim=True)
             else:
+                if self.use_uvfa and not self.use_upfa:
+                    replay_data.observations["weights"] = th.zeros_like(replay_data.observations["weights"])
+                    replay_data.observations["weights"][:, -1] = 1.0
                 qf_pi = self.critic(replay_data.observations, actions_pi).mean(dim=2).mean(dim=1, keepdim=True)
             actor_loss = (ent_coef * log_prob - qf_pi).mean()
             actor_losses.append(actor_loss.item())
@@ -436,7 +448,7 @@ class TQC(sb3_contrib.TQC):
         return total_timesteps, callback
     
     def predict(self, observation: np.ndarray, weights: np.ndarray = None, **kwargs) -> Tuple[np.ndarray, Optional[Tuple[np.ndarray, ...]]]:
-        if self.use_uvfa:
+        if self.use_upfa:
             weights = weights.reshape((-1, self.scheduler.reward_dim))
             if len(weights) != len(observation):
                 batch_size = observation.shape[0] if isinstance(observation, spaces.Box) else observation["observation"].shape[0]
