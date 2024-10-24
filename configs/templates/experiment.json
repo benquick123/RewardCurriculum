@@ -1,4 +1,5 @@
 {
+    "log_path": "./results/",
     "eval_kwargs": {
         "n_eval_episodes": 10,
         "eval_freq": 5000

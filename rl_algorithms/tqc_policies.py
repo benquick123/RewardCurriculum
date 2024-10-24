@@ -292,7 +292,6 @@ class TQCPolicy(BasePolicy):
         optimizer_kwargs: Optional[Dict[str, Any]] = None,
         n_quantiles: int = 25,
         n_critics: int = 2,
-        use_retrospective_loss: bool = False,
         share_features_extractor: bool = False
     ):
         super().__init__(
@@ -338,8 +337,6 @@ class TQCPolicy(BasePolicy):
         }
         self.critic_kwargs.update(tqc_kwargs)
         self.share_features_extractor = share_features_extractor
-        
-        self.use_retrospective_loss = use_retrospective_loss
 
         self._build(lr_schedule)
 
@@ -374,11 +371,6 @@ class TQCPolicy(BasePolicy):
             lr=lr_schedule(1),
             **self.optimizer_kwargs,
         )
-        
-        if self.use_retrospective_loss:
-            self.critic_retro = self.make_critic(features_extractor=None)
-            self.critic_retro.load_state_dict(self.critic.state_dict())
-            self.critic_retro.set_training_mode(False)
 
     def _get_constructor_parameters(self) -> Dict[str, Any]:
         data = super()._get_constructor_parameters()
@@ -484,7 +476,6 @@ class CnnPolicy(TQCPolicy):
         optimizer_kwargs: Optional[Dict[str, Any]] = None,
         n_quantiles: int = 25,
         n_critics: int = 2,
-        use_retrospective_loss: bool = False,
         share_features_extractor: bool = False,
     ):
         super().__init__(
@@ -504,7 +495,6 @@ class CnnPolicy(TQCPolicy):
             optimizer_kwargs,
             n_quantiles,
             n_critics,
-            use_retrospective_loss,
             share_features_extractor,
         )
 
@@ -555,7 +545,6 @@ class MultiInputPolicy(TQCPolicy):
         optimizer_kwargs: Optional[Dict[str, Any]] = None,
         n_quantiles: int = 25,
         n_critics: int = 2,
-        use_retrospective_loss: bool = False,
         share_features_extractor: bool = False,
     ):
         super().__init__(
@@ -575,6 +564,5 @@ class MultiInputPolicy(TQCPolicy):
             optimizer_kwargs,
             n_quantiles,
             n_critics,
-            use_retrospective_loss,
             share_features_extractor,
         )

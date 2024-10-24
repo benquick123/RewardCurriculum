@@ -18,13 +18,10 @@ from stable_baselines3.common.policies import BasePolicy
 from stable_baselines3.common.type_aliases import MaybeCallback, RolloutReturn, TrainFreq
 from stable_baselines3.common.utils import polyak_update
 
-from cl_algorithms.single_task import SingleTask
-from rl_algorithms.replay_buffer import HerReplayBuffer, ReplayBuffer, DictReplayBuffer
+from rl_algorithms.replay_buffer import HerReplayBuffer
 from rl_algorithms.tqc_policies import (CnnPolicy, MlpPolicy, MultiInputPolicy,
                                         TQCPolicy)
 from utils.callbacks import ProgressBarCallback
-from utils.retrospective_loss import retrospective_loss_fn
-from utils.train_utils import compute_normalized_entropy
 
 
 class TQC(sb3_contrib.TQC):
@@ -38,7 +35,7 @@ class TQC(sb3_contrib.TQC):
     
     def __init__(self, policy, env,  
                  reward_dim=1, 
-                 scheduler_class=SingleTask, 
+                 scheduler_class=None, 
                  scheduler_kwargs={}, 
                  use_retrospective_loss=False, 
                  use_upfa=True, # universal policy function approximation
@@ -47,22 +44,17 @@ class TQC(sb3_contrib.TQC):
         self.use_uvfa = use_uvfa
         self.use_upfa = use_upfa
         
+        assert scheduler_class is not None, "Scheduler class must be provided."
         self.scheduler = scheduler_class(reward_dim=reward_dim, **scheduler_kwargs)
         
         kwargs["replay_buffer_class"] = kwargs.get("replay_buffer_class", "HerReplayBuffer")
-        if isinstance(kwargs["replay_buffer_class"], str):
-            if kwargs["replay_buffer_class"] == "HerReplayBuffer":
-                kwargs["replay_buffer_class"] = HerReplayBuffer
-            elif kwargs["replay_buffer_class"] == "ReplayBuffer":
-                kwargs["replay_buffer_class"] = ReplayBuffer
-            elif kwargs["replay_buffer_class"] == "DictReplayBuffer":
-                kwargs["replay_buffer_class"] = DictReplayBuffer
-            else:
-                raise NotImplementedError(f"Replay buffer class {kwargs['replay_buffer_class']} not implemented.")
+        if kwargs["replay_buffer_class"] == "HerReplayBuffer":
+            kwargs["replay_buffer_class"] = HerReplayBuffer
+        else:
+            raise NotImplementedError(f"Replay buffer class {kwargs['replay_buffer_class']} not implemented.")
                 
         if "replay_buffer_kwargs" not in kwargs:
             kwargs["replay_buffer_kwargs"] = dict()
-        # kwargs["replay_buffer_kwargs"]["reward_dim"] = reward_dim
         kwargs["replay_buffer_kwargs"]["scheduler"] = self.scheduler
         kwargs["replay_buffer_kwargs"]["use_uvfa"] = use_uvfa or use_upfa
         
@@ -76,12 +68,6 @@ class TQC(sb3_contrib.TQC):
         self.cl_train_time = 0
         
         super().__init__(policy, env, **kwargs)
-        
-    def _setup_model(self) -> None:
-        super()._setup_model()
-        
-        if self.use_retrospective_loss:
-            self.critic_retro = self.policy.critic_retro
             
     def collect_rollouts(self, env: VecEnv, callback: BaseCallback, train_freq: TrainFreq, replay_buffer: ReplayBuffer, action_noise: ActionNoise | None = None, learning_starts: int = 0, log_interval: int | None = None) -> RolloutReturn:
         start = time()
@@ -99,8 +85,6 @@ class TQC(sb3_contrib.TQC):
         optimizers = [self.actor.optimizer, self.critic.optimizer]
         if self.ent_coef_optimizer is not None:
             optimizers += [self.ent_coef_optimizer]
-        if hasattr(self.actor, "features_extractor_optimizer"):
-            optimizers += [self.actor.features_extractor_optimizer]
 
         # Update learning rate according to lr schedule
         self._update_learning_rate(optimizers)
@@ -244,14 +228,7 @@ class TQC(sb3_contrib.TQC):
                         
         obs["weights"] = self.scheduler.get_current_weights()
 
-        replay_buffer.add(
-            obs,
-            next_obs,
-            buffer_action,
-            reward_,
-            dones,
-            infos,
-        )
+        replay_buffer.add(obs, next_obs, buffer_action, reward_, dones, infos)
 
         self._last_obs = new_obs
         # Save the unnormalized observation
@@ -273,38 +250,6 @@ class TQC(sb3_contrib.TQC):
             # we assume that the policy uses tanh to scale the action
             # We use non-deterministic action in the case of SAC, for TD3, it does not matter
             unscaled_action, _ = self.predict(deepcopy(self._last_obs), weights=self.scheduler.get_current_weights(), deterministic=False)
-            
-            if self._prev_object is not None and hasattr(self.actor.features_extractor, "get_selected"):
-                entropy = compute_normalized_entropy(self.actor.features_extractor.get_selected(return_probs=True))
-                assert entropy.shape == (1, ), f"Wrong entropy shape. It has to be one-dimensional, but got shape {entropy.shape}."
-                
-                if th.rand_like(entropy) < entropy:
-                    # we keep the object the same as in previous step
-                    tensor_obs = deepcopy(self._last_obs)
-                    if isinstance(tensor_obs, spaces.Box):
-                        tensor_obs = np.concatenate((tensor_obs, self.scheduler.get_current_weights()), axis=-1)
-                    else:
-                        tensor_obs["weights"] = self.scheduler.get_current_weights()
-                    tensor_obs, vectorized_env = self.policy.obs_to_tensor(tensor_obs)
-                    
-                    with th.no_grad():
-                        reduced_obs = self.actor.features_extractor.features_from_indices(tensor_obs, self._prev_object)
-                        unscaled_action = self.policy.actor(reduced_obs, deterministic=False)
-                        
-                    unscaled_action = unscaled_action.cpu().numpy().reshape((-1, *self.action_space.shape))
-
-                    if isinstance(self.action_space, spaces.Box):
-                        if self.policy.squash_output:
-                            unscaled_action = self.policy.unscale_action(unscaled_action)
-                        else:
-                            unscaled_action = np.clip(unscaled_action, self.action_space.low, self.action_space.high)
-
-                    # Remove batch dimension if needed
-                    if not vectorized_env:
-                        unscaled_action = unscaled_action.squeeze(axis=0)
-                                    
-            if hasattr(self.actor.features_extractor, "get_selected"):
-                self._prev_object = self.actor.features_extractor.get_selected(return_probs=False)            
 
         # Rescale the action from [low, high] to [-1, 1]
         if isinstance(self.action_space, spaces.Box):

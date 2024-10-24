@@ -45,17 +45,8 @@ if __name__ == "__main__":
     
     callback = SchedulerCallback(config)
     if config["log"]:        
-        # if "SparseRewardWrapper" in config["environment"]["wrappers"]:
-        #     wrappers += ["SparseRewardWrapper"]
-            
         wrappers = config["environment"]["wrappers"].copy()
         wrapper_kwargs = config["environment"]["wrapper_kwargs"].copy()
-        
-        # for i in range(len(wrappers)):
-        #     if wrappers[i] in config["environment"]["wrappers"]:
-        #         wrapper_kwargs.append(config["environment"]["wrapper_kwargs"][config["environment"]["wrappers"].index(wrappers[i])])
-        #     else:
-        #         wrapper_kwargs.append({})
         
         wrappers += ["SingleTaskRewardWrapper"]
         wrapper_kwargs += [{}]
@@ -71,7 +62,6 @@ if __name__ == "__main__":
             
         callback = [EvalCallback(eval_env=eval_env, warn=False, **config["eval_kwargs"]), callback]
 
-    # learner = config["learner_class"]("MultiInputSelectorPolicy", env, **config["learner_kwargs"])
     learner = config["learner_class"]("MultiInputPolicy", env, **config["learner_kwargs"])
     if args.continue_from is not None:
         if args.continue_mode == "final":

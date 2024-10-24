@@ -75,14 +75,6 @@ def get_config(path, args, remaining_args):
     if args.continue_from is not None:
         args.config_path = path = os.path.join(args.continue_from, "config_original.json")
         prev_remaining_args = eval(open(os.path.join(args.continue_from, "remaining_args.txt"), "r").read())
-        
-        # parse previous args
-        # prev_args = open(os.path.join(args.continue_from, "args.txt"), "r").read()
-        # prev_args = prev_args.replace("Namespace(", "")[:-1].split(", ")
-        # prev_args = dict([arg.split("=") for arg in prev_args])
-        # prev_args = {k: eval(v) for k, v in prev_args.items()}
-        # prev_args = Namespace(**prev_args)
-        # assert prev_args.env_name == args.env_name, f"{prev_args.env_name} != {args.env_name}"
     
     config = load_config(path)
         
@@ -159,12 +151,5 @@ def get_config(path, args, remaining_args):
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         config["learner_kwargs"]["scheduler_class"] = module.__dict__[module_split[-1]]
-        
-    # config["learner_kwargs"]["scheduler_kwargs"]["update_frequency"] = min(config["learner_kwargs"]["train_freq"][0], 
-    #                                                                        config["learner_kwargs"]["scheduler_kwargs"].get("update_frequency", float("inf")))
-        
-    # if "scheduler_kwargs" not in config["learner_kwargs"]:
-    #     config["learner_kwargs"]["scheduler_kwargs"] = dict()
-    # config["learner_kwargs"]["scheduler_kwargs"]["log_path"] = os.path.join(config["log_path"], config["log"], "reward_weights.csv")
-            
+
     return config
