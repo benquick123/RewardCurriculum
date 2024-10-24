@@ -11,8 +11,8 @@ def run_command(command):
 
 if __name__ == "__main__":
     start_seed = 0
-    n_seeds = 1
-    max_processes = 6
+    n_seeds = 10
+    max_processes = 3
     
     experiment_configs = [
         # Paper experiments:
