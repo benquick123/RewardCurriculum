@@ -1,9 +1,0 @@
-{
-    "template": "configs/templates/experiment_tqc.json",
-    "learner_kwargs": {
-        "scheduler_class": "cl_algorithms.manual.ManualCurriculum",
-        "scheduler_kwargs": {
-            "sampling_strategy": "random"
-        }
-    }
-}

@@ -22,7 +22,6 @@ from cl_algorithms.single_task import SingleTask
 from rl_algorithms.replay_buffer import HerReplayBuffer, ReplayBuffer, DictReplayBuffer
 from rl_algorithms.tqc_policies import (CnnPolicy, MlpPolicy, MultiInputPolicy,
                                         TQCPolicy)
-from rl_algorithms.tqc_selector_policies import SelectorMlpPolicy, MultiInputSelectorPolicy
 from utils.callbacks import ProgressBarCallback
 from utils.retrospective_loss import retrospective_loss_fn
 from utils.train_utils import compute_normalized_entropy
@@ -32,10 +31,8 @@ class TQC(sb3_contrib.TQC):
     
     policy_aliases: ClassVar[Dict[str, Type[BasePolicy]]] = {
         "MlpPolicy": MlpPolicy,
-        "SelectorMlpPolicy": SelectorMlpPolicy,
         "CnnPolicy": CnnPolicy,
         "MultiInputPolicy": MultiInputPolicy,
-        "MultiInputSelectorPolicy": MultiInputSelectorPolicy,
     }
     policy: TQCPolicy
     
@@ -123,19 +120,6 @@ class TQC(sb3_contrib.TQC):
             # Action by the current actor for the sampled state
             actions_pi, log_prob = self.actor.action_log_prob(replay_data.observations)
             
-            onehot_selected_indices = reduced_observations = onehot_selected_probabilities = None
-            if hasattr(self.actor.features_extractor, "get_features") and hasattr(self.actor.features_extractor, "get_selected"):
-                with th.no_grad():
-                    # at no point is it necessary to run gradient through reduced observations, so we can sefely detach.
-                    reduced_observations = self.actor.features_extractor.get_features().detach()
-                    onehot_selected_indices = self.actor.features_extractor.get_selected(return_probs=False).detach()
-                    onehot_selected_probabilities = self.actor.features_extractor.get_selected(return_probs=True).detach().cpu()
-                    if not th.all(th.isfinite(onehot_selected_probabilities)):
-                        print(onehot_selected_probabilities)
-                        print(th.sum(~th.isfinite(onehot_selected_probabilities)))
-                        exit()
-                    selected_ents.append(np.mean(compute_normalized_entropy(onehot_selected_probabilities).numpy()))
-            
             log_prob = log_prob.reshape(-1, 1)
 
             ent_coef_loss = None
@@ -163,32 +147,8 @@ class TQC(sb3_contrib.TQC):
                 
                 # Compute and cut quantiles at the next state
                 # batch x nets x quantiles
-                if hasattr(self.actor.features_extractor, "features_from_indices") and \
-                   hasattr(self.actor.features_extractor, "get_features") and \
-                   hasattr(self.actor.features_extractor, "get_selected") and \
-                   hasattr(self.actor, "action_log_prob_from_reduced_obs") and \
-                   hasattr(self.critic_target, "value_from_reduced_obs"):
-                       # take care of the potential selected object change in the future.
-                       next_reduced_observations_same = self.actor.features_extractor.features_from_indices(replay_data.next_observations, onehot_selected_indices)
-                       next_actions_same, next_log_prob_same = self.actor.action_log_prob_from_reduced_obs(next_reduced_observations_same)
-                       
-                       next_actions_diff, next_log_prob_diff = self.actor.action_log_prob(replay_data.next_observations)
-                       next_reduced_observations_diff = self.actor.features_extractor.get_features()
-                       
-                       # get next probabilities and entropy
-                       # NOTE: entropy is normalized and is always on interval [0, 1]
-                       next_entropy = compute_normalized_entropy(self.actor.features_extractor.get_selected(return_probs=True))
-                       
-                       # change or keep the object the same; use randomness and entropy as a measure.
-                       condition = (th.rand_like(next_entropy) > next_entropy).unsqueeze(-1)
-                       next_actions = th.where(condition, next_actions_same, next_actions_diff)
-                       next_log_prob = th.where(condition, next_log_prob_same.unsqueeze(-1), next_log_prob_diff.unsqueeze(-1))
-                       next_reduced_observations = th.where(condition, next_reduced_observations_same, next_reduced_observations_diff)
-                       
-                       next_quantiles = self.critic_target.value_from_reduced_obs(next_reduced_observations, next_actions)
-                else:
-                    next_actions, next_log_prob = self.actor.action_log_prob(replay_data.next_observations)
-                    next_quantiles = self.critic_target(replay_data.next_observations, next_actions)
+                next_actions, next_log_prob = self.actor.action_log_prob(replay_data.next_observations)
+                next_quantiles = self.critic_target(replay_data.next_observations, next_actions)
 
                 # Sort and drop top k quantiles to control overestimation.
                 n_target_quantiles = self.critic.quantiles_total - self.top_quantiles_to_drop_per_net * self.critic.n_critics
@@ -202,32 +162,10 @@ class TQC(sb3_contrib.TQC):
                 target_quantiles.unsqueeze_(dim=1)
 
             # Get current Quantile estimates using action from the replay buffer
-            if hasattr(self.critic_target, "value_from_reduced_obs"):
-                current_quantiles = self.critic.value_from_reduced_obs(reduced_observations, replay_data.actions.to(th.float32))
-            else:
-                current_quantiles = self.critic(replay_data.observations, replay_data.actions.to(th.float32))
+            current_quantiles = self.critic(replay_data.observations, replay_data.actions.to(th.float32))
             # Compute critic loss, not summing over the quantile dimension as in the paper.
             critic_loss = quantile_huber_loss(current_quantiles, target_quantiles, sum_over_quantiles=False)
             critic_losses.append(critic_loss.item())
-            
-            if self._n_updates > 0 and gradient_step > 0 and self.use_retrospective_loss:
-                if self._n_updates == 1:
-                    print("Retrospective loss has not been tested with TQC yet! Probably doesn't work.")
-                    
-                with th.no_grad():
-                    retro_quantiles = self.critic_retro(replay_data.observations, replay_data.actions.to(th.float32))
-                    
-                retrospective_loss = sum([
-                    retrospective_loss_fn(
-                        current_quantiles[:, i, :].unsqueeze(1),
-                        retro_quantiles[:, i, :].unsqueeze(1),
-                        target_quantiles,
-                        K=2, scaled=True, distance=lambda: partial(quantile_huber_loss, sum_over_quantiles=False)
-                    ) for i in range(self.critic.n_critics)
-                ])
-
-                
-                critic_loss += retrospective_loss
 
             # Optimize the critic
             self.critic.optimizer.zero_grad()
@@ -235,13 +173,10 @@ class TQC(sb3_contrib.TQC):
             self.critic.optimizer.step()
 
             # Compute actor loss
-            if hasattr(self.critic, "value_from_reduced_obs"):
-                qf_pi = self.critic.value_from_reduced_obs(reduced_observations, actions_pi).mean(dim=2).mean(dim=1, keepdim=True)
-            else:
-                if self.use_uvfa and not self.use_upfa:
-                    replay_data.observations["weights"] = th.zeros_like(replay_data.observations["weights"])
-                    replay_data.observations["weights"][:, -1] = 1.0
-                qf_pi = self.critic(replay_data.observations, actions_pi).mean(dim=2).mean(dim=1, keepdim=True)
+            if self.use_uvfa and not self.use_upfa:
+                replay_data.observations["weights"] = th.zeros_like(replay_data.observations["weights"])
+                replay_data.observations["weights"][:, -1] = 1.0
+            qf_pi = self.critic(replay_data.observations, actions_pi).mean(dim=2).mean(dim=1, keepdim=True)
             actor_loss = (ent_coef * log_prob - qf_pi).mean()
             actor_losses.append(actor_loss.item())
 
@@ -249,39 +184,6 @@ class TQC(sb3_contrib.TQC):
             self.actor.optimizer.zero_grad()
             actor_loss.backward()
             self.actor.optimizer.step()
-            
-            # deal with the features extractor training
-            if hasattr(self.actor, "features_extractor_optimizer") and \
-               hasattr(self.actor.features_extractor, "get_selected") and \
-               hasattr(self.actor.features_extractor, "num_objects") and \
-               hasattr(self.actor.features_extractor, "features_from_indices") and \
-               hasattr(self.critic, "value_from_reduced_obs"):
-                   # obtain probabilities and log probabilities for current batch
-                   _ = self.actor(replay_data.observations, deterministic=True)
-                   selector_probabilities = self.actor.features_extractor.get_selected(return_probs=True)
-                   selector_log_probabilities = selector_probabilities.clip(1e-8, 1).log()
-                   
-                   # get q-values for selecting each object for every sample in the batch
-                   # # get_values for each object
-                   qf_pi = []
-                   for idx in range(self.actor.features_extractor.num_objects):
-                       indices = th.zeros(batch_size, self.actor.features_extractor.num_objects).to(self.actor.device)
-                       indices[:, idx] = 1
-                       reduced_observations = self.actor.features_extractor.features_from_indices(replay_data.observations, indices)
-                       actions_pi = self.actor(reduced_observations, deterministic=True)
-                       qf_pi.append(self.critic.value_from_reduced_obs(reduced_observations, actions_pi).mean(dim=2).mean(dim=1, keepdim=True))
-                       
-                   qf_pi = th.cat(qf_pi, dim=1)
-                
-                   # compute selector loss
-                   # using static alpha for now
-                   # TODO: add option for setting alpha via config
-                   selector_loss = (selector_probabilities * (0.1 * selector_log_probabilities - qf_pi)).sum(dim=1).mean()
-                
-                   # backprop
-                   self.actor.features_extractor_optimizer.zero_grad()
-                   selector_loss.backward()
-                   self.actor.features_extractor_optimizer.step()
 
             # Update target networks
             if gradient_step % self.target_update_interval == 0:
@@ -289,9 +191,6 @@ class TQC(sb3_contrib.TQC):
                 # Copy running stats, see https://github.com/DLR-RM/stable-baselines3/issues/996
                 polyak_update(self.batch_norm_stats, self.batch_norm_stats_target, 1.0)
                 
-        if self.use_retrospective_loss:
-            self.critic_retro.load_state_dict(self.critic.state_dict())
-
         self._n_updates += gradient_steps
         
         self.rl_train_time += time() - start
