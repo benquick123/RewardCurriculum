@@ -1,4 +1,3 @@
-## TODO
+# Curriculum Learning Algorithms for Reward Weighting in a Sparse Reward Robotic Manipulation Tasks
 
-- rerun currot with normalized weights (w/ sum [W] = 1) - target distribution must in this case be in range [0, 10].
-- clip the target distributions where neccessary, vs. non-clipped
+This repository is an official implementation of the paper *Curriculum Learning Algorithms for Reward Weighting in a Sparse Reward Robotic Manipulation Tasks*. It consists of two branches, `master` and `paper`. The former implements additional experimental in possibly broken features, while the latter reflects the code used for experiments in the paper and some additional documentation.
