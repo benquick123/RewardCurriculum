@@ -1,7 +1,0 @@
-{
-    "template": ["configs/experiment_sac_single_task_sparse.json", "configs/templates/experiment_sac.json"],
-    "log": "dense",
-    "environment": {
-        "wrapper_kwargs": [{"ignore": true, "reward_threshold": -0.05}, {}]
-    }
-}

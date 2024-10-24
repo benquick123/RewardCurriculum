@@ -50,28 +50,6 @@ if __name__ == "__main__":
         # Ablation tests with universal policy and value functions
         "--config_path configs/experiment_tqc_setter_solver.json --env_name PandaMultiRewardPickAndPlaceSphereDense-v3 --learner_kwargs.use_upfa False --learner_kwargs.use_uvfa False",
         "--config_path configs/experiment_tqc_setter_solver.json --env_name PandaMultiRewardPickAndPlaceSphereDense-v3 --learner_kwargs.use_upfa False",
-        
-        # MUJOCO experiments:
-        # "--config_path configs/experiment_tqc_random.json --env_name Ant-v4",
-        # "--config_path configs/experiment_tqc_random.json --env_name HalfCheetah-v4 --environment.wrapper_kwargs '[{\"observation_keys\": [\"weights\"], \"observation_dims\": [(3, )]}, {}]' --learner_kwargs.reward_dim 3",
-        # "--config_path configs/experiment_tqc_random.json --env_name Hopper-v4",
-        # "--config_path configs/experiment_tqc_random.json --env_name Humanoid-v4",
-        # "--config_path configs/experiment_tqc_random.json --env_name Swimmer-v4 --environment.wrapper_kwargs '[{\"observation_keys\": [\"weights\"], \"observation_dims\": [(3, )]}, {}]' --learner_kwargs.reward_dim 3",
-        # "--config_path configs/experiment_tqc_random.json --env_name Walker2d-v4",
-        
-        # "--config_path configs/experiment_tqc_manual_task.json --env_name Ant-v4",
-        # "--config_path configs/experiment_tqc_manual_task.json --env_name HalfCheetah-v4 --environment.wrapper_kwargs '[{\"observation_keys\": [\"weights\"], \"observation_dims\": [(3, )]}, {}]' --learner_kwargs.reward_dim 3",
-        # "--config_path configs/experiment_tqc_manual_task.json --env_name Hopper-v4",
-        # "--config_path configs/experiment_tqc_manual_task.json --env_name Humanoid-v4",
-        # "--config_path configs/experiment_tqc_manual_task.json --env_name Swimmer-v4 --environment.wrapper_kwargs '[{\"observation_keys\": [\"weights\"], \"observation_dims\": [(3, )]}, {}]' --learner_kwargs.reward_dim 3",
-        # "--config_path configs/experiment_tqc_manual_task.json --env_name Walker2d-v4",
-        
-        # "--config_path configs/experiment_tqc_setter_solver.json --env_name Ant-v4",
-        # "--config_path configs/experiment_tqc_setter_solver.json --env_name HalfCheetah-v4 --environment.wrapper_kwargs '[{\"observation_keys\": [\"weights\"], \"observation_dims\": [(3, )]}, {}]' --learner_kwargs.reward_dim 3",
-        # "--config_path configs/experiment_tqc_setter_solver.json --env_name Hopper-v4",
-        # "--config_path configs/experiment_tqc_setter_solver.json --env_name Humanoid-v4",
-        # "--config_path configs/experiment_tqc_setter_solver.json --env_name Swimmer-v4 --environment.wrapper_kwargs '[{\"observation_keys\": [\"weights\"], \"observation_dims\": [(3, )]}, {}]' --learner_kwargs.reward_dim 3",
-        # "--config_path configs/experiment_tqc_setter_solver.json --env_name Walker2d-v4",
     ]
     
     command = "python train.py %s --seed %d"
