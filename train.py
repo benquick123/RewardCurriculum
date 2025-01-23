@@ -45,12 +45,13 @@ if __name__ == "__main__":
     
     callback = SchedulerCallback(config)
     if config["log"]:        
-        # if "SparseRewardWrapper" in config["environment"]["wrappers"]:
-        #     wrappers += ["SparseRewardWrapper"]
-            
         wrappers = config["environment"]["wrappers"].copy()
         wrapper_kwargs = config["environment"]["wrapper_kwargs"].copy()
         
+        if "SparseRewardWrapper" not in config["environment"]["wrappers"]:
+            wrappers += ["SparseRewardWrapper"]
+            wrapper_kwargs += [{"reward_threshold": -0.05}]
+            
         # for i in range(len(wrappers)):
         #     if wrappers[i] in config["environment"]["wrappers"]:
         #         wrapper_kwargs.append(config["environment"]["wrapper_kwargs"][config["environment"]["wrappers"].index(wrappers[i])])

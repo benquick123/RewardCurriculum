@@ -30,4 +30,4 @@ This will run one instance of the experiment using the Setter-Solver algorithm a
 
 ## Note
 
-This repository is an official implementation of the paper Curriculum Learning Algorithms for Reward Weighting in a Sparse Reward Robotic Manipulation Tasks. It consists of two branches, `master` and `additional`. The latter implements additional experimental in possibly broken features, while the former reflects the code used for experiments in the paper and some additional documentation. For re-running the experiments from the paper or making sense of our approach we recommend using the code from the `master` branch.
+This repository is an official implementation of the paper Curriculum Learning Algorithms for Reward Weighting in a Sparse Reward Robotic Manipulation Tasks. It consists of two branches, `master` and `additional`. The latter implements additional experimental and possibly broken features, while the former reflects the code used for experiments in the paper and some additional documentation. For re-running the experiments from the paper or making sense of our approach we recommend using the code from the `master` branch.
