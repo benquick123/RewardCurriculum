@@ -12,7 +12,7 @@ def run_command(command):
 if __name__ == "__main__":
     start_seed = 0
     n_seeds = 3
-    max_processes = 1
+    max_processes = 2
     
     experiment_configs = [
         # Paper experiments:
@@ -24,6 +24,9 @@ if __name__ == "__main__":
         # "--config_path configs/experiment_tqc_alpgmm.json --env_name PandaMultiRewardPickAndPlaceDense-v3",
         # "--config_path configs/experiment_tqc_currot.json --env_name PandaMultiRewardPickAndPlaceDense-v3",
         # "--config_path configs/experiment_tqc_setter_solver.json --env_name PandaMultiRewardPickAndPlaceDense-v3",
+        "--config_path configs/experiment_tqc_alpgmm.json --env_name PandaMultiRewardPickAndPlaceDense-v3 --dense True --environment.wrappers [] --environment.wrapper_kwargs []",
+        "--config_path configs/experiment_tqc_currot.json --env_name PandaMultiRewardPickAndPlaceDense-v3 --dense True --environment.wrappers [] --environment.wrapper_kwargs []",
+        "--config_path configs/experiment_tqc_setter_solver.json --env_name PandaMultiRewardPickAndPlaceDense-v3 --dense True --environment.wrappers [] --environment.wrapper_kwargs []",
         # "--config_path configs/experiment_tqc_sacx.json --env_name PandaMultiRewardPickAndPlaceDense-v3",
         
         # "--config_path configs/experiment_tqc_random.json --env_name PandaMultiRewardPickAndPlaceSphereDense-v3",
@@ -32,6 +35,9 @@ if __name__ == "__main__":
         # "--config_path configs/experiment_tqc_alpgmm.json --env_name PandaMultiRewardPickAndPlaceSphereDense-v3",
         # "--config_path configs/experiment_tqc_currot.json --env_name PandaMultiRewardPickAndPlaceSphereDense-v3",
         # "--config_path configs/experiment_tqc_setter_solver.json --env_name PandaMultiRewardPickAndPlaceSphereDense-v3",
+        "--config_path configs/experiment_tqc_alpgmm.json --env_name PandaMultiRewardPickAndPlaceSphereDense-v3 --dense True --environment.wrappers [] --environment.wrapper_kwargs []",
+        "--config_path configs/experiment_tqc_currot.json --env_name PandaMultiRewardPickAndPlaceSphereDense-v3 --dense True --environment.wrappers [] --environment.wrapper_kwargs []",
+        "--config_path configs/experiment_tqc_setter_solver.json --env_name PandaMultiRewardPickAndPlaceSphereDense-v3 --dense True --environment.wrappers [] --environment.wrapper_kwargs []",
         # "--config_path configs/experiment_tqc_sacx.json --env_name PandaMultiRewardPickAndPlaceSphereDense-v3",
         
         # "--config_path configs/experiment_tqc_random.json --env_name PandaMultiRewardPickAndPlaceObstacleDense-v3",
@@ -40,14 +46,21 @@ if __name__ == "__main__":
         # "--config_path configs/experiment_tqc_alpgmm.json --env_name PandaMultiRewardPickAndPlaceObstacleDense-v3",
         # "--config_path configs/experiment_tqc_currot.json --env_name PandaMultiRewardPickAndPlaceObstacleDense-v3",
         # "--config_path configs/experiment_tqc_setter_solver.json --env_name PandaMultiRewardPickAndPlaceObstacleDense-v3",
+        "--config_path configs/experiment_tqc_alpgmm.json --env_name PandaMultiRewardPickAndPlaceObstacleDense-v3 --dense True --environment.wrappers [] --environment.wrapper_kwargs []",
+        "--config_path configs/experiment_tqc_currot.json --env_name PandaMultiRewardPickAndPlaceObstacleDense-v3 --dense True --environment.wrappers [] --environment.wrapper_kwargs []",
+        "--config_path configs/experiment_tqc_setter_solver.json --env_name PandaMultiRewardPickAndPlaceObstacleDense-v3 --dense True --environment.wrappers [] --environment.wrapper_kwargs []",
         # "--config_path configs/experiment_tqc_sacx.json --env_name PandaMultiRewardPickAndPlaceObstacleDense-v3",
         
         # Multi-reward Stack with TQC
         # "--config_path configs/experiment_tqc_random.json --env_name PandaMultiRewardStackDense-v3",
         # "--config_path configs/experiment_tqc_manual_task.json --env_name PandaMultiRewardStackDense-v3",
+        "--config_path configs/experiment_tqc_dense.json --env_name PandaMultiRewardStackDense-v3 --dense True",
         # "--config_path configs/experiment_tqc_alpgmm.json --env_name PandaMultiRewardStackDense-v3",
         # "--config_path configs/experiment_tqc_currot.json --env_name PandaMultiRewardStackDense-v3",
         # "--config_path configs/experiment_tqc_setter_solver.json --env_name PandaMultiRewardStackDense-v3",
+        "--config_path configs/experiment_tqc_alpgmm.json --env_name PandaMultiRewardStackDense-v3 --dense True --environment.wrappers [] --environment.wrapper_kwargs []",
+        "--config_path configs/experiment_tqc_currot.json --env_name PandaMultiRewardStackDense-v3 --dense True --environment.wrappers [] --environment.wrapper_kwargs []",
+        "--config_path configs/experiment_tqc_setter_solver.json --env_name PandaMultiRewardStackDense-v3 --dense True --environment.wrappers [] --environment.wrapper_kwargs []",
         # "--config_path configs/experiment_tqc_sacx.json --env_name PandaMultiRewardStackDense-v3",
         
         # Ablation tests with universal policy and value functions
