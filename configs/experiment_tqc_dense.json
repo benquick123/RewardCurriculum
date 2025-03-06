@@ -7,6 +7,8 @@
         }
     },
 
-    "wrappers": [],
-    "wrapper_kwargs": []
+    "environment": {
+        "wrappers": [],
+        "wrapper_kwargs": []
+    }
 }
